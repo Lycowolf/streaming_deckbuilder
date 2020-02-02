@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 // There's no pointer that owns its value and is Copy: to free a value, it needs to know when it's a last instance, and
 // so it must count references; but refcounting can't be Copy, because the count would get out-of-sync.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Card {
     name: Rc<String>,
 }
