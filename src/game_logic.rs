@@ -235,7 +235,7 @@ impl GameState {
 }
 
 impl AutomatonState for GameState {
-    fn event(&self, event: GameEvent) -> ProcessingResult {
+    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
         // TODO:
         // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
         // Modify automaton to always send a StateEntered event when stack changes?

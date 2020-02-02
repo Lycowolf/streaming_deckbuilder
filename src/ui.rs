@@ -16,7 +16,7 @@ impl LoadingState {
 }
 
 impl AutomatonState for LoadingState {
-    fn event(&self, event: GameEvent) -> ProcessingResult {
+    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
         match event {
             GameEvent::IO(Event::Key(Key::Return, ButtonState::Pressed)) | GameEvent::Timeout => {
                 let new_game = GameState::new();
@@ -26,11 +26,11 @@ impl AutomatonState for LoadingState {
         }
     }
 
-    fn draw(&self, window: &mut Window, z_index: u32) -> () {
+    fn draw(&self, board_state: &Option<GameState>, window: &mut Window, z_index: u32) -> () {
         window.draw_ex(&Circle::new((300, 300), 32), Col(Color::BLUE), Transform::IDENTITY, z_index);
     }
 
-    fn update(&mut self) -> Option<GameEvent> {
+    fn update(&mut self, board_state: &mut Option<GameState>) -> Option<GameEvent> {
         if self.timer > 0 {
             self.timer -= 1;
         }
@@ -59,7 +59,7 @@ impl GameplayState {
 }
 
 impl AutomatonState for GameplayState {
-    fn event(&self, event: GameEvent) -> ProcessingResult {
+    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
         match event {
             GameEvent::IO(Event::Key(Key::Escape, ButtonState::Released)) => {
                 (StateAction::Pop, Some(GameEvent::GameEnded))
@@ -68,12 +68,12 @@ impl AutomatonState for GameplayState {
         }
     }
 
-    fn update(&mut self) -> Option<GameEvent> {
+    fn update(&mut self, board_state: &mut Option<GameState>) -> Option<GameEvent> {
         self.timer += 1;
         None
     }
 
-    fn draw(&self, window: &mut Window, z_index: u32) -> () {
+    fn draw(&self, board_state: &Option<GameState>, window: &mut Window, z_index: u32) -> () {
         let rectangle = Rectangle::new((300, 300), (32, 32));
         window.draw_ex(&rectangle, Col(Color::RED), Transform::rotate(self.timer), z_index);
     }
