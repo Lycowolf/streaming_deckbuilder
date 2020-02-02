@@ -6,16 +6,21 @@ use quicksilver::prelude::*;
 use std::collections::VecDeque;
 use std::collections::HashMap;
 use serde_derive::*;
+use itertools::Itertools; 
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Effect {
-    command : String
+#[serde(tag = "effect")]
+enum Effect {
+    Echo{msg: String},
+    Global{key: String, val: i16},
+    Return,
+    None
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Card {
     name : String,
-    on_play : Option<Effect>
+    on_play : Vec<Effect>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -90,26 +95,64 @@ impl Deck {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+struct NumberMap {
+    changed : HashMap<String, i16>
+}
+
+impl NumberMap {
+    fn new() -> Box<Self> {
+        Box::<NumberMap>::new(Self { changed : HashMap::<String, i16>::new()})
+    }
+
+    fn get(&self, key : &str) -> i16 {
+        match self.changed.get(key) {
+            Some(val) => *val,
+            None => 0
+        }
+    }
+
+    fn add(&mut self, key : &str, change : i16) {
+        let val = self.changed.entry(key.to_string()).or_insert(0);
+        *val += change;
+    }
+
+    fn reset(&mut self, key : &str) {
+        self.changed.remove(key);
+    }
+
+    fn reset_all(&mut self) {
+        self.changed.clear();
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GameState {
     hand : Box<Hand>,
     deck : Box<Deck>,
+    globals : Box<NumberMap>,
     turn : u16
 }
 
 impl GameState {
-    pub fn new() -> Box<GameState> {
-        Box::<GameState>::new(GameState::setup())
+    pub fn new() -> Box<Self> {
+        Box::<Self>::new(Self::setup(None))
     }
 
-    pub fn setup() -> GameState {
+    pub fn setup(deck_node : Option<&str>) -> GameState {
         let hand_size = 5;
 
         let hand = Hand { size : hand_size, cards : Vec::<Card>::with_capacity(hand_size)};
+        let deck = match deck_node {
+            Some(node) => Deck::load_deck("cards.json", node).expect("No deck loaded"),
+            None => Deck::new()
+        };
 
         GameState {
             turn : 1,
             hand : Box::new(hand),
-            deck : Deck::load_deck("cards.json", "starter_deck").expect("No deck loaded")}
+            deck : deck,
+            globals: NumberMap::new()
+        }
     }
 
     pub fn play_card(&mut self, idx : usize) {
@@ -117,9 +160,19 @@ impl GameState {
 
         println!("Played card {}", card.name);
 
-        match card.on_play {
-            Some(effect) => println!("  {}", effect.command),
-            None => println!("It does nothing")
+        let mut returning = false;
+
+        for effect in &card.on_play {
+            match effect {
+                Effect::Echo{msg} => println!("  {}", msg),
+                Effect::Global{key, val} => self.globals.add(&key, *val),
+                Effect::None => println!("  It does nothing"),
+                Effect::Return => { returning = true; }
+            }
+        }
+
+        if returning {
+            self.deck.add(card)
         }
     }
 
@@ -163,8 +216,17 @@ impl GameState {
     pub fn report_hand(&self) {
         println!("In hand, I have:");
         for card in self.hand.cards.iter() {
-            println!("{}", card.name)
+            println!(" - {}", card.name)
         }
         println!();
+    }
+
+    pub fn report(&self) {
+        println!("Game state:");
+        for (key, val) in self.globals.changed.iter().sorted() {
+            println!(" {}: {}", key, val);
+        }
+        println!();
+        self.report_hand();
     }
 }

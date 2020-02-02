@@ -2073,6 +2073,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "streaming_deckbuilder"
 version = "0.1.0"
 dependencies = [
+ "itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "json 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quicksilver 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
