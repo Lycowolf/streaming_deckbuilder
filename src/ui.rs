@@ -1,23 +1,25 @@
 /// UI states for our game's push-down automaton
 
 use crate::automaton::*;
-use crate::logic::*;
+use crate::game_logic::*;
 use quicksilver::prelude::*;
 
 #[derive(Debug)]
-pub struct LoadingState;
+pub struct LoadingState {
+    timer: u32
+}
 
 impl LoadingState {
     pub fn new() -> Box<Self> {
-        Box::new(Self)
+        Box::new(Self{ timer: 3*60 })
     }
 }
 
 impl AutomatonState for LoadingState {
     fn event(&self, event: GameEvent) -> ProcessingResult {
         match event {
-            GameEvent::IO(Event::Key(Key::Return, ButtonState::Pressed)) => {
-                let new_game = GameplayState::new();
+            GameEvent::IO(Event::Key(Key::Return, ButtonState::Pressed)) | GameEvent::Timeout => {
+                let new_game = GameState::new();
                 (StateAction::Replace(new_game), Some(GameEvent::Started))
             },
             _ => (StateAction::None, None)
@@ -26,6 +28,22 @@ impl AutomatonState for LoadingState {
 
     fn draw(&self, window: &mut Window, z_index: u32) -> () {
         window.draw_ex(&Circle::new((300, 300), 32), Col(Color::BLUE), Transform::IDENTITY, z_index);
+    }
+
+    fn update(&mut self) -> Option<GameEvent> {
+        if self.timer > 0 {
+            self.timer -= 1;
+        }
+
+        if self.timer % 60 == 0 {
+            println!("Seconds remaining: {}", self.timer / 60)
+        }
+
+        if self.timer == 0 {
+            Some(GameEvent::Timeout)
+        } else {
+            None
+        }
     }
 }
 
@@ -43,15 +61,16 @@ impl GameplayState {
 impl AutomatonState for GameplayState {
     fn event(&self, event: GameEvent) -> ProcessingResult {
         match event {
-            GameEvent::IO(Event::Key(Key::Escape, ButtonState::Pressed)) => {
-                (StateAction::Pop, None)
+            GameEvent::IO(Event::Key(Key::Escape, ButtonState::Released)) => {
+                (StateAction::Pop, Some(GameEvent::GameEnded))
             },
             _ => (StateAction::None, None)
         }
     }
 
-    fn update(&mut self) -> () {
+    fn update(&mut self) -> Option<GameEvent> {
         self.timer += 1;
+        None
     }
 
     fn draw(&self, window: &mut Window, z_index: u32) -> () {

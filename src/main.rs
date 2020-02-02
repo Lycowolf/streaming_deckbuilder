@@ -1,8 +1,6 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 extern crate quicksilver;
 mod automaton;
-mod gameobjects;
-mod logic;
 mod ui;
 
 use quicksilver::prelude::*;
@@ -26,15 +24,16 @@ impl State for Game {
     }
 
     fn event(&mut self, event: &Event, _window: &mut Window) -> Result<()> {
-        let run_out = self.automaton.event(event);
-        if run_out {
+        if self.automaton.event(event) {
             exit(0)
         }
         Ok(())
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        self.automaton.update();
+        if self.automaton.update() {
+            exit(0)
+        }
         Ok(())
     }
  

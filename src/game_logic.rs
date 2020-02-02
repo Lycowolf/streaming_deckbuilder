@@ -1,4 +1,3 @@
-
 extern crate quicksilver;
 extern crate json;
 
@@ -7,6 +6,9 @@ use std::collections::VecDeque;
 use std::collections::HashMap;
 use serde_derive::*;
 use itertools::Itertools; 
+
+use crate::automaton::*;
+use crate::ui::GameplayState;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "effect")]
@@ -45,6 +47,7 @@ impl Deck {
         Box::new(Self {cards: VecDeque::new() } )
     }
 
+    // FIXME: load as asset
     fn load_deck(filename : &str, node_name : &str) -> Result<Box<Deck>> {
         
         let file = load_file(filename)
@@ -228,5 +231,25 @@ impl GameState {
         }
         println!();
         self.report_hand();
+    }
+}
+
+impl AutomatonState for GameState {
+    fn event(&self, event: GameEvent) -> ProcessingResult {
+        // TODO:
+        // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
+        // Modify automaton to always send a StateEntered event when stack changes?
+        // Or we might to allow update() to return a new event (that would be probably good for timers etc. anyway).
+        println!("GameState received event: {:?}", event);
+        match event {
+            GameEvent::GameEnded => {
+                (StateAction::Pop, None)
+            },
+            _ => {
+                println!("Passing processing to UI");
+                let ui = GameplayState::new();
+                (StateAction::Push(ui), None)
+            }
+        }
     }
 }

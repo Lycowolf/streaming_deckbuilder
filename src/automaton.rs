@@ -1,25 +1,22 @@
-// TODO:
-// allow update to return a new state (for start-of-turn animations, time-limited actions etc.)
-// (See also notes in logic::TurnState.)
-// To do this, we want to be able to return a new event, just like the event() does,
-// but we should probably defer this to event processing?
-// If true, then we will have to implement our own event queue.
-
 /// Push-down automaton powering our game
 
 use quicksilver::lifecycle::{Event, Window};
 use quicksilver::graphics::Color;
 use quicksilver::Result;
+use std::collections::VecDeque;
 
 // TODO: more reasonable way to identify cards in play
 pub type HandIndex = u8;
 pub type BoardPosition = u8;
 
+#[derive(Debug)]
 pub enum GameEvent {
-    Started,
+    Started, // usually passed to new states to run their logic immediately
     CardPicked(HandIndex),
     CardTargeted(BoardPosition),
     IO(Event), // keyboard, mouse etc.
+    Timeout,
+    GameEnded
 }
 
 impl GameEvent {
@@ -70,7 +67,7 @@ pub trait AutomatonState: std::fmt::Debug {
     /// This is called periodically, probably every frame. Used for timers, UI animations etc.
     /// By default does nothing.
     // TODO: pass elapsed time?
-    fn update(&mut self) -> () {}
+    fn update(&mut self) -> Option<GameEvent> { None }
 
     /// Called every frame (if possible). It should draw only on the provided z-index.
     /// It is a good idea to draw into texture and cache the result for performance.
@@ -80,19 +77,56 @@ pub trait AutomatonState: std::fmt::Debug {
 }
 
 pub struct Automaton {
-    stack: Box<Vec<Box<dyn AutomatonState>>>
+    stack: Box<Vec<Box<dyn AutomatonState>>>,
+    event_queue: Box<VecDeque<GameEvent>>,
 }
 
-/// returns true if automaton's stack has been emptied
 impl Automaton {
     pub fn new(starting_state: Box<dyn AutomatonState>) -> Self {
-        Self {stack: Box::new(vec![starting_state])}
+        Self {
+            stack: Box::new(vec![starting_state]),
+            event_queue: Box::new(VecDeque::new()),
+        }
     }
 
+    /// returns true if automaton's stack has been emptied
     pub fn event(&mut self, event: &quicksilver::lifecycle::Event) -> bool {
-        let mut game_event = GameEvent::wrap_io(*event);
+        self.event_queue.push_back(GameEvent::wrap_io(*event));
 
+        self.process_events()
+    }
+
+    /// call periodically so current state can measure elapsed time
+    /// returns true if automaton's stack has been emptied
+    // TODO: maybe should panic when no state?
+    pub fn update(&mut self) -> bool {
+        let stack_top = self.stack.last_mut();
+        if stack_top.is_none() { return true }
+
+        let current_state = stack_top.unwrap();
+        if let Some(event) = current_state.update() {
+            self.event_queue.push_back(event);
+        }
+
+        self.process_events()
+    }
+
+    pub fn draw(&self, window: &mut Window) -> Result<()> {
+        window.clear(Color::BLACK)?; // TODO: maybe make clearing screen the caller's responsibility?
+        for (z, state) in self.stack.iter().enumerate() {
+            state.draw(window, z as u32);
+        }
+        Ok(())
+    }
+
+    fn process_events(&mut self) -> bool {
         loop {
+            let next_event = self.event_queue.pop_front();
+            let game_event = match next_event {
+                None => break,
+                Some(event) => event
+            };
+
             let stack_top = self.stack.last();
             println!("Stack top: {:?}", stack_top);
             if stack_top.is_none() { return true }
@@ -100,8 +134,15 @@ impl Automaton {
             let current_state = stack_top.unwrap();
             let (state_op, new_event) = current_state.event(game_event);
 
+            if new_event.is_some() {
+                self.event_queue.push_back(new_event.unwrap())
+            }
+
             match state_op {
-                StateAction::None => break,
+                StateAction::None => {
+                    // we might not be done: state may send an event to itself
+                    continue
+                },
                 StateAction::Replace(new_state) => {
                     self.stack.pop();
                     self.stack.push(new_state);
@@ -113,32 +154,7 @@ impl Automaton {
                     self.stack.push(new_state)
                 },
             }
-
-            if new_event.is_none() {
-                break
-            } else {
-                game_event = new_event.unwrap();
-            }
         }
         false
-    }
-
-    /// call periodically so current state can emasure elapsed time
-    /// does nothing when there's no current state
-    // TODO: maybe should panic when no state?
-    pub fn update(&mut self) {
-        let stack_top = self.stack.last_mut();
-        if stack_top.is_none() { return }
-
-        let current_state = stack_top.unwrap();
-        current_state.update();
-    }
-
-    pub fn draw(&self, window: &mut Window) -> Result<()> {
-        window.clear(Color::BLACK)?; // TODO: maybe make clearing screen the caller's responsibility?
-        for (z, state) in self.stack.iter().enumerate() {
-            state.draw(window, z as u32);
-        }
-        Ok(())
     }
 }
