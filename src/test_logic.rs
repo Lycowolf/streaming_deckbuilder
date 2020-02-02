@@ -1,5 +1,8 @@
 
 mod game_logic;
+mod automaton;
+mod ui;
+
 
 use game_logic as gl;
 
