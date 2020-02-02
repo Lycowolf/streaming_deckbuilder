@@ -1,15 +1,43 @@
 {
     "cards": {
-        "build": {"name": "Construction", "on_play": {"command": "Diggers ahoy!" }},
-        "build2": {"name": "Greater Construction", "on_play": {"command": "Sim city!" }},
-        "wall": {"name": "Warding Wall", "on_play": {"command": "We buld this wall and build it strong, they'll be here before log" }},
-        "tank": {"name": "Tanks", "on_play": {"command": "Boom! Boom!" }},
-        "kaiju": {"name": "Summon kaiju", "on_play": {"command": "I see a bad moon rising" }}
+        "build": {"name": "Construction", "on_play": [
+            {"effect": "Echo", "msg": "Diggers ahoy!" },
+            {"effect": "Global", "key": "Build", "val": 2 }
+        ]},
+        "build2": {"name": "Greater Construction", "on_play": [
+            {"effect": "Echo", "msg": "Sim city!" },
+            {"effect": "Global", "key": "Build", "val": 2 }
+          ]},
+        "wall": {"name": "Warding Wall", "on_play": [
+            {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },
+            {"effect": "Global", "key": "Build", "val": -3 }
+          ]},
+        "tank": {"name": "Tanks", "on_play": [
+            {"effect": "Echo", "msg": "Boom! Boom!" },
+            {"effect": "Global", "key": "Attack", "val": 1 }
+          ]},
+        "kaiju": {"name": "Summon kaiju", "on_play": [
+            {"effect": "Echo", "msg": "I see a bad moon rising" },
+            {"effect": "Global", "key": "Evil", "val": 1 },
+            {"effect": "Return"}
+          ]},
+        "googles": {"name": "Googles", "on_play": [
+            {"effect": "None"}
+          ]}
     },
 
     "starter_deck": {
         "build" : 8,
         "kaiju" : 2
+    },
+
+    "test_deck": {
+        "build" : 2,
+        "build2": 2,
+        "wall": 1,
+        "tank": 2,
+        "kaiju" : 3,
+        "googles": 1
     }
 
 }
