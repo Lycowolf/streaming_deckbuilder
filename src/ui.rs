@@ -11,26 +11,32 @@ pub struct LoadingState {
 
 impl LoadingState {
     pub fn new() -> Box<Self> {
-        Box::new(Self{ timer: 3*60 })
+        Box::new(Self{ timer: 1 })
     }
 }
 
 impl AutomatonState for LoadingState {
-    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
+    fn event(&self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
         match event {
             GameEvent::IO(Event::Key(Key::Return, ButtonState::Pressed)) | GameEvent::Timeout => {
-                let new_game = GameState::new();
+                let new_game = Box::new(GameplayState::new());
                 (StateAction::Replace(new_game), Some(GameEvent::Started))
             },
             _ => (StateAction::None, None)
         }
     }
 
-    fn draw(&self, board_state: &Option<GameState>, window: &mut Window, z_index: u32) -> () {
+    fn draw(&self, board_state: &Option<BoardState>, window: &mut Window, z_index: u32) -> () {
+        // TODO draw boardstate.global
+        // TODO draw hand
         window.draw_ex(&Circle::new((300, 300), 32), Col(Color::BLUE), Transform::IDENTITY, z_index);
     }
 
-    fn update(&mut self, board_state: &mut Option<GameState>) -> Option<GameEvent> {
+    fn update(&mut self, board_state: &mut Option<BoardState>) -> Option<GameEvent> {
+        // TODO async load
+        *board_state = Some(BoardState::setup(Some("test_deck")));
+
+
         if self.timer > 0 {
             self.timer -= 1;
         }
@@ -48,18 +54,18 @@ impl AutomatonState for LoadingState {
 }
 
 #[derive(Debug)]
-pub struct GameplayState {
+pub struct TakeTurnState {
     timer: i32
 }
 
-impl GameplayState {
+impl TakeTurnState {
     pub fn new() -> Box<Self> {
         Box::new(Self {timer: 0})
     }
 }
 
-impl AutomatonState for GameplayState {
-    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
+impl AutomatonState for TakeTurnState {
+    fn event(&self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
         match event {
             GameEvent::IO(Event::Key(Key::Escape, ButtonState::Released)) => {
                 (StateAction::Pop, Some(GameEvent::GameEnded))
@@ -68,12 +74,12 @@ impl AutomatonState for GameplayState {
         }
     }
 
-    fn update(&mut self, board_state: &mut Option<GameState>) -> Option<GameEvent> {
+    fn update(&mut self, board_state: &mut Option<BoardState>) -> Option<GameEvent> {
         self.timer += 1;
         None
     }
 
-    fn draw(&self, board_state: &Option<GameState>, window: &mut Window, z_index: u32) -> () {
+    fn draw(&self, board_state: &Option<BoardState>, window: &mut Window, z_index: u32) -> () {
         let rectangle = Rectangle::new((300, 300), (32, 32));
         window.draw_ex(&rectangle, Col(Color::RED), Transform::rotate(self.timer), z_index);
     }

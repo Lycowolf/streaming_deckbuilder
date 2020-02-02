@@ -8,7 +8,7 @@ use serde_derive::*;
 use itertools::Itertools; 
 
 use crate::automaton::*;
-use crate::ui::GameplayState;
+use crate::ui::TakeTurnState;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "effect")]
@@ -20,20 +20,24 @@ enum Effect {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Card {
+pub struct Card {
     name : String,
     on_play : Vec<Effect>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Hand {
+pub struct Hand {
     size : usize,
     cards : Vec<Card>
 }
 
 impl Hand {
-    fn is_full(&self) -> bool {
+    pub fn is_full(&self) -> bool {
         self.cards.len() == self.size
+    }
+
+    pub fn get(&self, idx: usize) -> Card {
+        self.cards[idx].clone()
     }
 }
 
@@ -72,7 +76,7 @@ impl Deck {
 
         let mut new_deck = Deck::new();
         for (key, num) in data.iter() {
-            for _ in 1..*num {
+            for _ in 0..*num {
                 if factory.contains_key(key) {
                     let card = factory.get(key).unwrap().clone();
                     new_deck.add(card);
@@ -98,7 +102,7 @@ impl Deck {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct NumberMap {
+pub struct NumberMap {
     changed : HashMap<String, i16>
 }
 
@@ -129,19 +133,19 @@ impl NumberMap {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GameState {
-    hand : Box<Hand>,
+pub struct BoardState {
+    pub hand : Box<Hand>,
     deck : Box<Deck>,
-    globals : Box<NumberMap>,
+    pub globals : Box<NumberMap>,
     turn : u16
 }
 
-impl GameState {
+impl BoardState {
     pub fn new() -> Box<Self> {
         Box::<Self>::new(Self::setup(None))
     }
 
-    pub fn setup(deck_node : Option<&str>) -> GameState {
+    pub fn setup(deck_node : Option<&str>) -> BoardState {
         let hand_size = 5;
 
         let hand = Hand { size : hand_size, cards : Vec::<Card>::with_capacity(hand_size)};
@@ -150,7 +154,7 @@ impl GameState {
             None => Deck::new()
         };
 
-        GameState {
+        BoardState {
             turn : 1,
             hand : Box::new(hand),
             deck : deck,
@@ -158,14 +162,16 @@ impl GameState {
         }
     }
 
-    pub fn play_card(&mut self, idx : usize) {
-        let card = self.hand.cards.remove(idx);
+    pub fn play_card(&mut self, card: Card) {
+        let idx = self.hand.cards.iter().position(|c| card.eq(c) )
+            .expect("WTF? PLaying card not in hand?");
+        let played = self.hand.cards.remove(idx);
 
-        println!("Played card {}", card.name);
+        println!("Played card {}", played.name);
 
         let mut returning = false;
 
-        for effect in &card.on_play {
+        for effect in &played.on_play {
             match effect {
                 Effect::Echo{msg} => println!("  {}", msg),
                 Effect::Global{key, val} => self.globals.add(&key, *val),
@@ -175,7 +181,7 @@ impl GameState {
         }
 
         if returning {
-            self.deck.add(card)
+            self.deck.add(played)
         }
     }
 
@@ -234,20 +240,44 @@ impl GameState {
     }
 }
 
-impl AutomatonState for GameState {
-    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult {
+#[derive(Debug)]
+pub struct GameplayState;
+
+impl GameplayState {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl AutomatonState for GameplayState {
+    fn event(&self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
         // TODO:
         // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
         // Modify automaton to always send a StateEntered event when stack changes?
         // Or we might to allow update() to return a new event (that would be probably good for timers etc. anyway).
         println!("GameState received event: {:?}", event);
+        let ui = TakeTurnState::new();
+        let board : &mut BoardState = board_state.as_mut().unwrap();
+
         match event {
-            GameEvent::GameEnded => {
-                (StateAction::Pop, None)
+            GameEvent::Started => {
+                board.begin_turn();
+                (StateAction::Push(ui), None)
+            } 
+            GameEvent::CardPicked(card) => {
+                board.play_card(card);
+                (StateAction::Push(ui), None)
+            } 
+            //GameEvent::CardTargeted => (StateAction::None, None),
+            GameEvent::EndTurn => {
+                board.end_turn();
+                board.begin_turn();
+                (StateAction::Push(ui), None)
             },
+            GameEvent::GameEnded => (StateAction::Pop, None),
             _ => {
                 println!("Passing processing to UI");
-                let ui = GameplayState::new();
+                
                 (StateAction::Push(ui), None)
             }
         }

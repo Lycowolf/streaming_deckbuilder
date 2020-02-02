@@ -4,7 +4,7 @@ use quicksilver::lifecycle::{Event, Window};
 use quicksilver::graphics::Color;
 use quicksilver::Result;
 use std::collections::VecDeque;
-use crate::game_logic::GameState;
+use crate::game_logic;
 
 // TODO: more reasonable way to identify cards in play
 pub type HandIndex = u8;
@@ -13,8 +13,9 @@ pub type BoardPosition = u8;
 #[derive(Debug)]
 pub enum GameEvent {
     Started, // usually passed to new states to run their logic immediately
-    CardPicked(HandIndex),
+    CardPicked(game_logic::Card),
     CardTargeted(BoardPosition),
+    EndTurn, 
     IO(Event), // keyboard, mouse etc.
     Timeout,
     GameEnded
@@ -63,24 +64,24 @@ pub trait AutomatonState: std::fmt::Debug {
     /// in the (new) top state on the stack.
     /// When state change is specified, this event will be passed to the new state immediately.
     /// If state wishes the incoming event should be reprocessed in the new state, it should pass it back here.
-    fn event(&self, board_state: &mut Option<GameState>, event: GameEvent) -> ProcessingResult;
+    fn event(&self, board_state: &mut Option<game_logic::BoardState>, event: GameEvent) -> ProcessingResult;
 
     /// This is called periodically, probably every frame. Used for timers, UI animations etc.
     /// By default does nothing.
     // TODO: pass elapsed time?
-    fn update(&mut self, board_state: &mut Option<GameState>) -> Option<GameEvent> { None }
+    fn update(&mut self, board_state: &mut Option<game_logic::BoardState>) -> Option<GameEvent> { None }
 
     /// Called every frame (if possible). It should draw only on the provided z-index.
     /// It is a good idea to draw into texture and cache the result for performance.
     /// Screen is blanked before stack is drawn.
     /// By default does nothing.
-    fn draw(&self, board_state: &Option<GameState>, window: &mut Window, z_index: u32) -> () {}
+    fn draw(&self, board_state: &Option<game_logic::BoardState>, window: &mut Window, z_index: u32) -> () {}
 }
 
 pub struct Automaton {
     stack: Box<Vec<Box<dyn AutomatonState>>>,
     event_queue: Box<VecDeque<GameEvent>>,
-    board_state: Option<GameState>
+    board_state: Option<game_logic::BoardState>
 }
 
 impl Automaton {
