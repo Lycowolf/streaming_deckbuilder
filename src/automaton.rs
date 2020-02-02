@@ -1,3 +1,10 @@
+// TODO:
+// allow update to return a new state (for start-of-turn animations, time-limited actions etc.)
+// (See also notes in logic::TurnState.)
+// To do this, we want to be able to return a new event, just like the event() does,
+// but we should probably defer this to event processing?
+// If true, then we will have to implement our own event queue.
+
 /// Push-down automaton powering our game
 
 use quicksilver::lifecycle::{Event, Window};

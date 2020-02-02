@@ -1,6 +1,7 @@
 /// UI states for our game's push-down automaton
 
 use crate::automaton::*;
+use crate::logic::*;
 use quicksilver::prelude::*;
 
 #[derive(Debug)]

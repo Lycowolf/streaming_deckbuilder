@@ -1,6 +1,8 @@
 #![windows_subsystem = "windows"]
 extern crate quicksilver;
 mod automaton;
+mod gameobjects;
+mod logic;
 mod ui;
 
 use quicksilver::prelude::*;
