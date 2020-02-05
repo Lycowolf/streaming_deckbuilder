@@ -163,7 +163,7 @@ impl BoardState {
         }
     }
 
-     fn play_card(&mut self, card: Card) {
+    pub fn play_card(&mut self, card: Card) {
         let idx = self.hand.cards.iter().position(|c| card.eq(c) )
             .expect("WTF? PLaying card not in hand?");
         let played = self.hand.cards.remove(idx);
