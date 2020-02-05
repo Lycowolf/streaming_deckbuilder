@@ -23,8 +23,12 @@ enum Effect {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
     pub name : String,
-    on_play : Vec<Effect>
+    on_play : Vec<Effect>,
+    cost: i16,
+    cost_currency: String
 }
+
+type CardFactory = HashMap<String, Card>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Hand {
@@ -52,6 +56,23 @@ impl Deck {
         Box::new(Self {cards: VecDeque::new() } )
     }
 
+    fn from_json(deck_node: serde_json::value::Value, card_factory: &CardFactory) -> Box<Self> {
+        let data : HashMap<String, u16> =  serde_json::from_value(deck_node)
+                                                .expect("Malformed deck list");
+
+        let mut new_deck = Deck::new();
+        for (key, num) in data.iter() {
+            for _ in 0..*num {
+                if card_factory.contains_key(key) {
+                    let card = card_factory.get(key).unwrap().clone();
+                    new_deck.add(card);
+                }
+            }
+        };
+
+        new_deck
+    }
+
     // FIXME: load as asset
     fn load_deck(filename : &str, node_name : &str) -> Result<Box<Deck>> {
         
@@ -65,25 +86,15 @@ impl Deck {
                             .expect("file should have \"cards\" node")
                             .clone()
                         };
-        let factory : HashMap<String, Card> = serde_json::from_value(card_node)
+        let factory: CardFactory = serde_json::from_value(card_node)
                 .expect("Malformed card list");
 
         let deck_node  = { json.get(node_name)
                             .expect(format!("file should have \"{}\" node", node_name).as_str())
                             .clone()
                         };
-        let data : HashMap<String, u16> =  serde_json::from_value(deck_node)
-                .expect("Malformed deck list");
 
-        let mut new_deck = Deck::new();
-        for (key, num) in data.iter() {
-            for _ in 0..*num {
-                if factory.contains_key(key) {
-                    let card = factory.get(key).unwrap().clone();
-                    new_deck.add(card);
-                }
-            }
-        };
+        let new_deck = Deck::from_json(deck_node, &factory);
 
         Ok(new_deck)
     }
@@ -130,6 +141,50 @@ impl NumberMap {
 
     fn reset_all(&mut self) {
         self.changed.clear();
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum StoreType {
+    Fixed{items: Vec<String>},
+    Drafted{size: i8, from_deck: String}
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Store {
+    pub store_type: StoreType,
+    pub menu: Vec<Card>
+}
+
+impl Store {
+    fn from_json(json: serde_json::value::Value) -> Store {
+        serde_json::from_value(json).expect("Malformed store description")
+    }
+
+    fn populate(&mut self, card_factory: CardFactory) {
+        self.menu.clear();
+
+        match &self.store_type {
+            StoreType::Fixed{items} => {
+                for i in items {
+                    if card_factory.contains_key(i) {
+                        self.menu.push(card_factory.get(i).unwrap().clone())
+                    }
+                }
+            },
+            StoreType::Drafted{size, from_deck} => {
+                let mut deck = Deck::load_deck("filename", &from_deck).unwrap();
+
+                for _ in 0..*size {
+                    let card = deck.draw();
+                    match deck.draw() {
+                        Some(card) => self.menu.push(card),
+                        None => ()
+                    }
+                }
+            }
+        }
+
     }
 }
 
