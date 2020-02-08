@@ -4,6 +4,7 @@ use quicksilver::lifecycle::{Event, Window};
 use quicksilver::graphics::Color;
 use quicksilver::Result;
 use std::collections::VecDeque;
+use crate::game_objects;
 use crate::game_logic;
 
 // TODO: more reasonable way to identify cards in play
@@ -13,7 +14,7 @@ pub type BoardPosition = u8;
 #[derive(Debug)]
 pub enum GameEvent {
     Started, // usually passed to new states to run their logic immediately
-    CardPicked(game_logic::Card),
+    CardPicked(game_objects::Card),
     CardTargeted(BoardPosition),
     EndTurn, 
     IO(Event), // keyboard, mouse etc.

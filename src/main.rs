@@ -2,6 +2,7 @@
 extern crate quicksilver;
 mod automaton;
 mod ui;
+mod game_objects;
 mod game_logic;
 
 use quicksilver::prelude::*;
