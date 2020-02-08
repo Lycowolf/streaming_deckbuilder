@@ -19,7 +19,3 @@ derivative = "1.0"
 [[bin]]
 name = "game"
 path = "src/main.rs"
-
-[[bin]]
-name = "test"
-path = "src/test_logic.rs"
