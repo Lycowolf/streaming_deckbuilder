@@ -2,6 +2,7 @@ extern crate quicksilver;
 extern crate json;
 
 use serde_derive::*;
+use quicksilver::prelude::*;
 
 use crate::automaton::*;
 use crate::ui::TakeTurnState;
@@ -10,31 +11,66 @@ use std::mem::take;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BoardState {
-    pub hand : Box<Hand>,
-    deck : Box<Deck>,
-    pub globals : Box<NumberMap>,
-    turn : u16
+    pub hand: Box<Hand>,
+    deck: Box<Deck>,
+    pub globals: Box<NumberMap>,
+    turn: u16,
+    store_fixed: Box<Store>,
+    store_trade: Box<Store>
 }
 
 impl BoardState {
+    /*
     pub fn new() -> Box<Self> {
         Box::<Self>::new(Self::setup(None))
     }
+    */
 
-    pub fn setup(deck_node : Option<&str>) -> BoardState {
+    pub fn load_board(filename: &str) -> BoardState {
+        
+        let deck_node_name = "test_deck";
+        let store_node = "build_store";
+        let trade_row = "kaiju_trade";
         let hand_size = 5;
 
-        let hand = Hand { size : hand_size, cards : Vec::<Card>::with_capacity(hand_size)};
-        let deck = match deck_node {
-            Some(node) => Deck::load_deck("cards.json", node).expect("No deck loaded"),
-            None => Deck::new()
-        };
+
+        let file = load_file(filename)
+            .wait()
+            .expect("file should open read only");
+        let json: serde_json::Value = serde_json::from_slice(file.as_slice())
+            .expect("file should be proper JSON");
+        
+        let card_node = { json.get("cards")
+                            .expect("file should have \"cards\" node")
+                            .clone()
+                        };
+        let factory: CardFactory = serde_json::from_value(card_node)
+                .expect("Malformed card list");
+
+        let deck_node  = { json.get(deck_node_name)
+                            .expect(format!("file should have \"{}\" node", deck_node_name).as_str())
+                            .clone()
+                        };
+
+        let draw_deck = Deck::from_json(deck_node, &factory);
+
+        //let bs_node = { json.get("build_store").expect("build_store node not found").clone() };
+        let build_store = Store::from_json(&json, store_node, &factory);
+
+        //let ks_node = { json.get("kaiju_store").expect("kaiju_store node not found").clone() };
+        let kaiju_store = Store::from_json(&json, trade_row, &factory);
+
+        let hand = Hand { size: hand_size, cards: Vec::<Card>::with_capacity(hand_size)};
+
+        print!("Loading done");
 
         BoardState {
-            turn : 1,
-            hand : Box::new(hand),
-            deck : deck,
-            globals: NumberMap::new()
+            turn: 1,
+            hand: Box::new(hand),
+            deck: draw_deck,
+            globals: NumberMap::new(),
+            store_fixed: Box::new(build_store),
+            store_trade: Box::new(kaiju_store)
         }
     }
 
@@ -112,11 +148,29 @@ impl BoardState {
         println!();
         self.report_hand();
     }
+
+    fn find_index_in_store(&self, store: &Store, card: &Card) -> Option<usize> {
+        store.menu.iter().position(|c| card.eq(c))
+    }
+
+    fn find_card_in_stores(&mut self, card: &Card) -> (&mut Store, usize) {
+        match self.find_index_in_store(&self.store_fixed, &card) {
+            Some(idx) => { return (self.store_fixed.as_mut(), idx); },
+            None => ()
+        };
+
+        match self.find_index_in_store(&self.store_trade, &card) {
+            Some(idx) => { return (self.store_trade.as_mut(), idx); },
+            None => ()
+        };
+
+        panic!("Card not found in stores;")
+    }
 }
 
 impl Default for BoardState {
     fn default() -> Self {
-        Self::setup(None)
+        Self::load_board("cards.json")
     }
 }
 
@@ -153,6 +207,21 @@ impl AutomatonState for GameplayState {
                 TakeTurnState::new(Box::new(take(self)))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
+            GameEvent::CardBought(card_idx) => {
+                let store = self.board.store_fixed.as_mut();
+
+                if let Some(card) = store.menu.get(card_idx) {
+                    self.board.globals.add(&card.cost_currency, -card.cost);
+                    self.board.deck.add(card.clone());
+
+                    if let StoreType::Drafted{size: _, from_deck: _} = store.store_type {
+                        store.menu.remove(card_idx);
+                        store.refill();
+                    }
+                }
+
+                TakeTurnState::new(Box::new(take(self)))
+            }
             GameEvent::EndTurn => {
                 self.board.end_turn();
                 self.board.begin_turn();

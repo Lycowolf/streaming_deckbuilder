@@ -16,7 +16,7 @@ pub struct LoadingState {
 impl LoadingState {
     pub fn new() -> Box<Self> {
         Box::new(Self {
-            board_state: BoardState::setup(Some("test_deck")),
+            board_state: BoardState::load_board("cards.json"),
         })
     }
 }

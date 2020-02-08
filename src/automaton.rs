@@ -10,8 +10,10 @@ use std::process::exit;
 //  with lifetimes.
 #[derive(Debug, Copy, Clone)]
 pub enum GameEvent {
+    Started, // usually passed to new states to run their logic immediately
     CardPicked(usize),
     CardTargeted(usize),
+    CardBought(usize),
     EndTurn, 
     IO(Event), // keyboard, mouse etc.
     Timeout,
