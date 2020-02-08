@@ -9,6 +9,7 @@ use itertools::Itertools;
 
 use crate::automaton::*;
 use crate::ui::TakeTurnState;
+use crate::automaton::GameEvent::Started;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "effect")]
@@ -21,14 +22,14 @@ enum Effect {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
-    name : String,
+    pub name : String,
     on_play : Vec<Effect>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Hand {
-    size : usize,
-    cards : Vec<Card>
+    pub size : usize,
+    pub cards : Vec<Card>
 }
 
 impl Hand {
@@ -162,7 +163,7 @@ impl BoardState {
         }
     }
 
-    pub fn play_card(&mut self, card: Card) {
+     fn play_card(&mut self, card: Card) {
         let idx = self.hand.cards.iter().position(|c| card.eq(c) )
             .expect("WTF? PLaying card not in hand?");
         let played = self.hand.cards.remove(idx);
@@ -250,7 +251,7 @@ impl GameplayState {
 }
 
 impl AutomatonState for GameplayState {
-    fn event(&self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
+    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
         // TODO:
         // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
         // Modify automaton to always send a StateEntered event when stack changes?
@@ -262,17 +263,17 @@ impl AutomatonState for GameplayState {
         match event {
             GameEvent::Started => {
                 board.begin_turn();
-                (StateAction::Push(ui), None)
+                (StateAction::Push(ui), Some(GameEvent::Started))
             } 
             GameEvent::CardPicked(card) => {
                 board.play_card(card);
-                (StateAction::Push(ui), None)
+                (StateAction::Push(ui), Some(GameEvent::Started))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::EndTurn => {
                 board.end_turn();
                 board.begin_turn();
-                (StateAction::Push(ui), None)
+                (StateAction::Push(ui), Some(GameEvent::Started))
             },
             GameEvent::GameEnded => (StateAction::Pop, None),
             _ => {

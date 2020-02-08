@@ -17,7 +17,7 @@ struct Game {
  
 impl State for Game {
     fn new() -> Result<Game> {
-        let mut loading = LoadingState::new();
+        let loading = LoadingState::new();
         let game = Game {
             automaton: Automaton::new(loading)
         };

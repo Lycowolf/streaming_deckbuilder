@@ -64,7 +64,7 @@ pub trait AutomatonState: std::fmt::Debug {
     /// in the (new) top state on the stack.
     /// When state change is specified, this event will be passed to the new state immediately.
     /// If state wishes the incoming event should be reprocessed in the new state, it should pass it back here.
-    fn event(&self, board_state: &mut Option<game_logic::BoardState>, event: GameEvent) -> ProcessingResult;
+    fn event(&mut self, board_state: &mut Option<game_logic::BoardState>, event: GameEvent) -> ProcessingResult;
 
     /// This is called periodically, probably every frame. Used for timers, UI animations etc.
     /// By default does nothing.
@@ -131,11 +131,11 @@ impl Automaton {
                 Some(event) => event
             };
 
-            let stack_top = self.stack.last();
+            let stack_top= self.stack.last_mut();
             println!("Stack top: {:?}", stack_top);
             if stack_top.is_none() { return true }
 
-            let current_state = stack_top.unwrap();
+            let current_state: &mut Box<dyn AutomatonState> = stack_top.unwrap();
             let (state_op, new_event) = current_state.event(&mut self.board_state, game_event);
 
             if new_event.is_some() {
