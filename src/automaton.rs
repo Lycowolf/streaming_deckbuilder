@@ -15,6 +15,7 @@ pub enum GameEvent {
     Started, // usually passed to new states to run their logic immediately
     CardPicked(game_logic::Card),
     CardTargeted(BoardPosition),
+    CardBought(game_logic::Card),
     EndTurn, 
     IO(Event), // keyboard, mouse etc.
     Timeout,

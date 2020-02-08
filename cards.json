@@ -1,61 +1,61 @@
 {
-    "cards": {
-        "build": {"name": "Construction", "on_play": [
-            {"effect": "Echo", "msg": "Diggers ahoy!" },
-            {"effect": "Global", "key": "Build", "val": 2 }
-        ], "cost": 1, "cost_currency": "Build"},
+  "cards": {
+      "build": {"name": "Construction", "on_play": [
+          {"effect": "Echo", "msg": "Diggers ahoy!" },
+          {"effect": "Global", "key": "Build", "val": 2 }
+      ], "cost": 1, "cost_currency": "Build"},
 
-        "build2": {"name": "Greater Construction", "on_play": [
-            {"effect": "Echo", "msg": "Sim city!" },
-            {"effect": "Global", "key": "Build", "val": 2 }
-          ], "cost": 2, "cost_currency": "Build"},
+      "build2": {"name": "Greater Construction", "on_play": [
+          {"effect": "Echo", "msg": "Sim city!" },
+          {"effect": "Global", "key": "Build", "val": 2 }
+        ], "cost": 2, "cost_currency": "Build"},
 
-        "wall": {"name": "Warding Wall", "on_play": [
-            {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },
-            {"effect": "Global", "key": "Build", "val": -3 }
-          ], "cost": 3, "cost_currency": "Build"},
+      "wall": {"name": "Warding Wall", "on_play": [
+          {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },
+          {"effect": "Global", "key": "Build", "val": -3 }
+        ], "cost": 3, "cost_currency": "Build"},
 
-        "tank": {"name": "Tanks", "on_play": [
-            {"effect": "Echo", "msg": "Boom! Boom!" },
-            {"effect": "Global", "key": "Attack", "val": 1 }
-          ], "cost": 2, "cost_currency": "Build"},
+      "tank": {"name": "Tanks", "on_play": [
+          {"effect": "Echo", "msg": "Boom! Boom!" },
+          {"effect": "Global", "key": "Attack", "val": 1 }
+        ], "cost": 2, "cost_currency": "Build"},
 
-        "kaiju": {"name": "Summon kaiju", "on_play": [
-            {"effect": "Echo", "msg": "I see a bad moon rising" },
-            {"effect": "Global", "key": "Evil", "val": 1 },
-            {"effect": "Return"}
-          ], "cost": 1, "cost_currency": "Evil"},
-          
-        "daikaiju": {"name": "MAGMA KRAKEN!", "on_play": [
-            {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
-            {"effect": "Global", "key": "Evil", "val": 3 },
-            {"effect": "Return"}
-          ], "cost": 3, "cost_currency": "Evil"},
-        "googles": {"name": "Googles", "on_play": [
-            {"effect": "None"}
-          ]}
-    },
+      "kaiju": {"name": "Summon kaiju", "on_play": [
+          {"effect": "Echo", "msg": "I see a bad moon rising" },
+          {"effect": "Global", "key": "Evil", "val": 1 },
+          {"effect": "Return"}
+        ], "cost": 1, "cost_currency": "Evil"},
+        
+      "daikaiju": {"name": "MAGMA KRAKEN!", "on_play": [
+          {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
+          {"effect": "Global", "key": "Evil", "val": 3 },
+          {"effect": "Return"}
+        ], "cost": 3, "cost_currency": "Evil"},
+      "googles": {"name": "Googles", "on_play": [
+          {"effect": "None"}
+        ], "cost": 1, "cost_currency": "Evil"}
+  },
 
-    "starter_deck": {
-        "build" : 8,
-        "kaiju" : 2
-    },
+  "starter_deck": {
+      "build": 8,
+      "kaiju": 2
+  },
 
-    "test_deck": {
-        "build" : 2,
-        "build2": 2,
-        "wall": 1,
-        "tank": 2,
-        "kaiju" : 3,
-        "googles": 1
-    },
+  "test_deck": {
+      "build": 2,
+      "build2": 2,
+      "wall": 1,
+      "tank": 2,
+      "kaiju": 3,
+      "googles": 1
+  },
 
-    "kaiju_deck": {
-      "kaiju": 10,
-      "daikaiju": 3
-    },
+  "kaiju_deck": {
+    "kaiju": 10,
+    "daikaiju": 3
+  },
 
-    "build_store": {"type": "fixed", "items": ["build", "build2", "wall", "googles"]},
+  "build_store": {"type": "Fixed", "items": ["build", "build2", "wall", "googles"]},
 
-    "kaiju_trade": {"type": "drafted", "size": 5, "from_deck": "kaiju_deck"}
+  "kaiju_store": {"type": "Drafted", "size": 5, "from_deck": "kaiju_deck"}
 }

@@ -22,8 +22,8 @@ enum Effect {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Card {
-    pub name : String,
-    on_play : Vec<Effect>,
+    pub name: String,
+    on_play: Vec<Effect>,
     cost: i16,
     cost_currency: String
 }
@@ -32,8 +32,8 @@ type CardFactory = HashMap<String, Card>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Hand {
-    pub size : usize,
-    pub cards : Vec<Card>
+    pub size: usize,
+    pub cards: Vec<Card>
 }
 
 impl Hand {
@@ -48,7 +48,7 @@ impl Hand {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Deck {
-    cards : VecDeque<Card>
+    cards: VecDeque<Card>
 }
 
 impl Deck {
@@ -57,7 +57,7 @@ impl Deck {
     }
 
     fn from_json(deck_node: serde_json::value::Value, card_factory: &CardFactory) -> Box<Self> {
-        let data : HashMap<String, u16> =  serde_json::from_value(deck_node)
+        let data: HashMap<String, u16> =  serde_json::from_value(deck_node)
                                                 .expect("Malformed deck list");
 
         let mut new_deck = Deck::new();
@@ -74,7 +74,7 @@ impl Deck {
     }
 
     // FIXME: load as asset
-    fn load_deck(filename : &str, node_name : &str) -> Result<Box<Deck>> {
+    fn load_deck(filename: &str, node_name: &str) -> Result<Box<Deck>> {
         
         let file = load_file(filename)
             .wait()
@@ -103,7 +103,7 @@ impl Deck {
         self.cards.pop_front()
     }
 
-    fn add(&mut self, new_card : Card) {
+    fn add(&mut self, new_card: Card) {
         self.cards.push_back(new_card)
     }
 
@@ -115,27 +115,27 @@ impl Deck {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NumberMap {
-    changed : HashMap<String, i16>
+    changed: HashMap<String, i16>
 }
 
 impl NumberMap {
     fn new() -> Box<Self> {
-        Box::<NumberMap>::new(Self { changed : HashMap::<String, i16>::new()})
+        Box::<NumberMap>::new(Self { changed: HashMap::<String, i16>::new()})
     }
 
-    fn get(&self, key : &str) -> i16 {
+    fn get(&self, key: &str) -> i16 {
         match self.changed.get(key) {
             Some(val) => *val,
             None => 0
         }
     }
 
-    fn add(&mut self, key : &str, change : i16) {
+    fn add(&mut self, key: &str, change: i16) {
         let val = self.changed.entry(key.to_string()).or_insert(0);
         *val += change;
     }
 
-    fn reset(&mut self, key : &str) {
+    fn reset(&mut self, key: &str) {
         self.changed.remove(key);
     }
 
@@ -145,23 +145,42 @@ impl NumberMap {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum StoreType {
     Fixed{items: Vec<String>},
     Drafted{size: i8, from_deck: String}
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Store {
     pub store_type: StoreType,
-    pub menu: Vec<Card>
+    pub menu: Vec<Card>,
+    deck: Option<Box<Deck>>
 }
 
 impl Store {
-    fn from_json(json: serde_json::value::Value) -> Store {
-        serde_json::from_value(json).expect("Malformed store description")
+/*
+    fn from_json(json: serde_json::value::Value, factory: &CardFactory) -> Store {
+        let store_type : StoreType = serde_json::from_value(json).expect("Malformed store description");
+
+        let mut store = Store { store_type: store_type, menu: Vec::<Card>::new() };
+        store.populate(factory);
+
+        store
+    }
+*/
+    fn from_json(json: &serde_json::value::Value, node: &str, factory: &CardFactory) -> Store {
+        let source_node = json.get(node).expect(format!("store node {} not found", node).as_str()).clone();
+
+        let store_type : StoreType = serde_json::from_value(source_node).expect("Malformed store description");
+
+        let mut store = Store { store_type: store_type, menu: Vec::<Card>::new(), deck: None };
+        store.populate(factory, &json);
+
+        store
     }
 
-    fn populate(&mut self, card_factory: CardFactory) {
+    fn populate(&mut self, card_factory: &CardFactory, json: &serde_json::value::Value) {
         self.menu.clear();
 
         match &self.store_type {
@@ -173,15 +192,19 @@ impl Store {
                 }
             },
             StoreType::Drafted{size, from_deck} => {
-                let mut deck = Deck::load_deck("filename", &from_deck).unwrap();
+                let deck_node = json.get(from_deck)
+                    .expect(format!("deck node {} not found", from_deck).as_str())
+                    .clone();
+                let mut deck = Deck::from_json(deck_node, card_factory);
 
                 for _ in 0..*size {
-                    let card = deck.draw();
                     match deck.draw() {
                         Some(card) => self.menu.push(card),
                         None => ()
                     }
                 }
+
+                self.deck = Some(deck);
             }
         }
 
@@ -190,31 +213,66 @@ impl Store {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BoardState {
-    pub hand : Box<Hand>,
-    deck : Box<Deck>,
-    pub globals : Box<NumberMap>,
-    turn : u16
+    pub hand: Box<Hand>,
+    deck: Box<Deck>,
+    pub globals: Box<NumberMap>,
+    turn: u16,
+    store_fixed: Box<Store>,
+    store_trade: Box<Store>
 }
 
 impl BoardState {
+    /*
     pub fn new() -> Box<Self> {
         Box::<Self>::new(Self::setup(None))
     }
+    */
 
-    pub fn setup(deck_node : Option<&str>) -> BoardState {
+    pub fn load_board(filename: &str) -> BoardState {
+        
+        let deck_node_name = "test_deck";
+        let store_node = "build_store";
+        let trade_row = "kaiju_trade";
         let hand_size = 5;
 
-        let hand = Hand { size : hand_size, cards : Vec::<Card>::with_capacity(hand_size)};
-        let deck = match deck_node {
-            Some(node) => Deck::load_deck("cards.json", node).expect("No deck loaded"),
-            None => Deck::new()
-        };
+
+        let file = load_file(filename)
+            .wait()
+            .expect("file should open read only");
+        let json: serde_json::Value = serde_json::from_slice(file.as_slice())
+            .expect("file should be proper JSON");
+        
+        let card_node = { json.get("cards")
+                            .expect("file should have \"cards\" node")
+                            .clone()
+                        };
+        let factory: CardFactory = serde_json::from_value(card_node)
+                .expect("Malformed card list");
+
+        let deck_node  = { json.get(deck_node_name)
+                            .expect(format!("file should have \"{}\" node", deck_node_name).as_str())
+                            .clone()
+                        };
+
+        let draw_deck = Deck::from_json(deck_node, &factory);
+
+        //let bs_node = { json.get("build_store").expect("build_store node not found").clone() };
+        let build_store = Store::from_json(&json, store_node, &factory);
+
+        //let ks_node = { json.get("kaiju_store").expect("kaiju_store node not found").clone() };
+        let kaiju_store = Store::from_json(&json, trade_row, &factory);
+
+        let hand = Hand { size: hand_size, cards: Vec::<Card>::with_capacity(hand_size)};
+
+        print!("Loading done");
 
         BoardState {
-            turn : 1,
-            hand : Box::new(hand),
-            deck : deck,
-            globals: NumberMap::new()
+            turn: 1,
+            hand: Box::new(hand),
+            deck: draw_deck,
+            globals: NumberMap::new(),
+            store_fixed: Box::new(build_store),
+            store_trade: Box::new(kaiju_store)
         }
     }
 
@@ -294,6 +352,24 @@ impl BoardState {
         println!();
         self.report_hand();
     }
+
+    fn find_index_in_store(&self, store: &Store, card: &Card) -> Option<usize> {
+        store.menu.iter().position(|c| card.eq(c))
+    }
+
+    fn find_card_in_stores(&mut self, card: &Card) -> (&mut Store, usize) {
+        match self.find_index_in_store(&self.store_fixed, &card) {
+            Some(idx) => { return (self.store_fixed.as_mut(), idx); },
+            None => ()
+        };
+
+        match self.find_index_in_store(&self.store_trade, &card) {
+            Some(idx) => { return (self.store_trade.as_mut(), idx); },
+            None => ()
+        };
+
+        panic!("Card not found in stores;")
+    }
 }
 
 #[derive(Debug)]
@@ -313,7 +389,7 @@ impl AutomatonState for GameplayState {
         // Or we might to allow update() to return a new event (that would be probably good for timers etc. anyway).
         println!("GameState received event: {:?}", event);
         let ui = TakeTurnState::new();
-        let board : &mut BoardState = board_state.as_mut().unwrap();
+        let board: &mut BoardState = board_state.as_mut().unwrap();
 
         match event {
             GameEvent::Started => {
@@ -325,6 +401,27 @@ impl AutomatonState for GameplayState {
                 (StateAction::Push(ui), Some(GameEvent::Started))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
+            GameEvent::CardBought(card) => {
+                board.globals.add(&card.cost_currency, -card.cost);
+               
+                // TODO replace when we have references
+                {
+                    let source = board.find_card_in_stores(&card);
+                    let store = source.0;
+                    let idx = source.1;
+
+                    if let StoreType::Drafted{size: _, from_deck: _} = store.store_type {
+                        store.menu.remove(idx);
+                        if let Some(newcard) = store.deck.as_mut().unwrap().draw() {
+                            store.menu.push(newcard);
+                        }
+                    }
+                }
+
+                board.deck.add(card);
+
+                (StateAction::Push(ui), Some(GameEvent::Started))
+            }
             GameEvent::EndTurn => {
                 board.end_turn();
                 board.begin_turn();

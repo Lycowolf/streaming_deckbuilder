@@ -39,7 +39,7 @@ impl AutomatonState for LoadingState {
 
     fn update(&mut self, board_state: &mut Option<BoardState>) -> Option<GameEvent> {
         // TODO async load
-        *board_state = Some(BoardState::setup(Some("test_deck")));
+        *board_state = Some(BoardState::load_board("cards.json"));
 
 
         if self.timer > 0 {
