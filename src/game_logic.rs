@@ -6,8 +6,9 @@ use serde_derive::*;
 use crate::automaton::*;
 use crate::ui::TakeTurnState;
 use crate::game_objects::*;
+use std::mem::take;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BoardState {
     pub hand : Box<Hand>,
     deck : Box<Deck>,
@@ -37,10 +38,11 @@ impl BoardState {
         }
     }
 
-     fn play_card(&mut self, card: Card) {
-        let idx = self.hand.cards.iter().position(|c| card.eq(c) )
-            .expect("WTF? PLaying card not in hand?");
-        let played = self.hand.cards.remove(idx);
+     fn play_card(&mut self, card: usize) {
+        if !(0..self.hand.cards.len()).contains(&card) {
+            panic!("WTF? Playing card not in hand? I should play card #{:?} from my hand: {:?}", card, self.hand);
+        }
+        let played = self.hand.cards.remove(card);
 
         println!("Played card {}", played.name);
 
@@ -112,7 +114,7 @@ impl BoardState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GameplayState;
 
 impl GameplayState {
@@ -122,36 +124,38 @@ impl GameplayState {
 }
 
 impl AutomatonState for GameplayState {
-    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
+    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> Box<dyn AutomatonState> {
+        let mut taken_self = take(self);
         // TODO:
         // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
         // Modify automaton to always send a StateEntered event when stack changes?
         // Or we might to allow update() to return a new event (that would be probably good for timers etc. anyway).
         println!("GameState received event: {:?}", event);
-        let ui = TakeTurnState::new();
-        let board : &mut BoardState = board_state.as_mut().unwrap();
+        let mut board = board_state.as_mut().unwrap();
 
         match event {
             GameEvent::Started => {
                 board.begin_turn();
-                (StateAction::Push(ui), Some(GameEvent::Started))
+                TakeTurnState::new(Box::new(taken_self)).event( board_state, GameEvent::Started)
             } 
             GameEvent::CardPicked(card) => {
                 board.play_card(card);
-                (StateAction::Push(ui), Some(GameEvent::Started))
+                TakeTurnState::new(Box::new(taken_self)).event(board_state, GameEvent::Started)
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::EndTurn => {
                 board.end_turn();
                 board.begin_turn();
-                (StateAction::Push(ui), Some(GameEvent::Started))
+                TakeTurnState::new(Box::new(taken_self)).event(board_state, GameEvent::Started)
             },
-            GameEvent::GameEnded => (StateAction::Pop, None),
+            GameEvent::GameEnded => Box::new(GameEndedState{}),
             _ => {
-                println!("Passing processing to UI");
-                
-                (StateAction::Push(ui), None)
+                panic!("This state can't handle event {:?}", event)
             }
         }
+    }
+
+    fn update(&mut self, board_state: &mut Option<BoardState>) -> Box<dyn AutomatonState> {
+        Box::new(take(self))
     }
 }

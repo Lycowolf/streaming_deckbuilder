@@ -26,16 +26,12 @@ impl State for Game {
     }
 
     fn event(&mut self, event: &Event, _window: &mut Window) -> Result<()> {
-        if self.automaton.event(event) {
-            exit(0)
-        }
+        self.automaton.event(event);
         Ok(())
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        if self.automaton.update() {
-            exit(0)
-        }
+        self.automaton.update();
         Ok(())
     }
  

@@ -8,27 +8,20 @@ use serde::export::fmt::Debug;
 use derivative::*;
 use std::borrow::Borrow;
 use itertools::Itertools;
+use std::mem::take;
 
-#[derive(Debug)]
-pub struct LoadingState {
-    timer: u32
-}
+#[derive(Debug, Default)]
+pub struct LoadingState {}
 
 impl LoadingState {
     pub fn new() -> Box<Self> {
-        Box::new(Self { timer: 1 })
+        Box::new(Self {})
     }
 }
 
 impl AutomatonState for LoadingState {
-    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
-        match event {
-            GameEvent::IO(Event::Key(Key::Return, ButtonState::Pressed)) | GameEvent::Timeout => {
-                let new_game = Box::new(GameplayState::new());
-                (StateAction::Replace(new_game), Some(GameEvent::Started))
-            }
-            _ => (StateAction::None, None)
-        }
+    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> Box<dyn AutomatonState> {
+        Box::new(take(self))
     }
 
     fn draw(&self, board_state: &Option<BoardState>, window: &mut Window, z_index: u32) -> () {
@@ -37,24 +30,10 @@ impl AutomatonState for LoadingState {
         window.draw_ex(&Circle::new((300, 300), 32), Col(Color::BLUE), Transform::IDENTITY, z_index);
     }
 
-    fn update(&mut self, board_state: &mut Option<BoardState>) -> Option<GameEvent> {
+    fn update(&mut self, board_state: &mut Option<BoardState>) -> Box<dyn AutomatonState> {
         // TODO async load
-        *board_state = Some(BoardState::setup(Some("test_deck")));
-
-
-        if self.timer > 0 {
-            self.timer -= 1;
-        }
-
-        if self.timer % 60 == 0 {
-            println!("Seconds remaining: {}", self.timer / 60)
-        }
-
-        if self.timer == 0 {
-            Some(GameEvent::Timeout)
-        } else {
-            None
-        }
+        std::mem::replace(board_state, Some(BoardState::setup(Some("test_deck"))));
+        GameplayState::new().event(board_state, GameEvent::Started)
     }
 }
 
@@ -65,6 +44,7 @@ impl AutomatonState for LoadingState {
 #[derive(Derivative)]
 #[derivative(Debug)]
 pub struct TakeTurnState {
+    gameplay_state: Box<GameplayState>,
     widgets: Option<Vec<Box<dyn Widget>>>,
     #[derivative(Debug = "ignore")]
     font: Font,
@@ -72,17 +52,25 @@ pub struct TakeTurnState {
 
 // TODO: load fonts in LoadingState
 impl TakeTurnState {
-    pub fn new() -> Box<Self> {
+    pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
         let font = Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file");
         Box::new(Self {
+            gameplay_state,
             widgets: None,
             font,
         })
     }
 }
 
+// This is only a placeholder, to allow us to take() ourself from &mut Self
+impl Default for TakeTurnState {
+    fn default() -> Self {
+        *Self::new(Box::new(GameplayState::new()))
+    }
+}
+
 impl AutomatonState for TakeTurnState {
-    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> ProcessingResult {
+    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> Box<dyn AutomatonState> {
         match event {
             // TODO: generalize to arbitrary window sizes
             GameEvent::Started => {
@@ -96,7 +84,7 @@ impl AutomatonState for TakeTurnState {
                     &self.font,
                     Box::new(|| {
                         println!("Draw pile clicked");
-                        GameEvent::Started // TODO: this is placeholder
+                        GameEvent::EndTurn // TODO: this is placeholder
                     }),
                 )) as Box<dyn Widget>);
 
@@ -113,12 +101,12 @@ impl AutomatonState for TakeTurnState {
                         &self.font,
                         Box::new(move || {
                             println!("{}", action_text);
-                            GameEvent::CardPicked(card.clone())
+                            GameEvent::CardPicked(num)
                         }),
                     )) as Box<dyn Widget>);
                 }
                 self.widgets = Some(widgets);
-                (StateAction::None, None)
+                Box::new(take(self))
             },
             GameEvent::IO(Event::MouseMoved(position)) => {
                 if let Some(widgets) = &mut self.widgets {
@@ -126,33 +114,33 @@ impl AutomatonState for TakeTurnState {
                         w.update_hovered(position);
                     }
                 }
-                (StateAction::None, None)
+                Box::new(take(self))
             },
             GameEvent::IO(Event::MouseButton(MouseButton::Left, ButtonState::Released)) => {
                 match &self.widgets {
-                    None => (StateAction::None, None),
+                    None => panic!("No widgets in running UI"),
                     Some(widgets) => {
                         let found = widgets.iter()
                             .map(|widg| {widg.maybe_activate()}) // translate to events (maybe all None)
                             .find(|event| {event.is_some()}) // maybe find first Some
                             .map(|some_event| {some_event.unwrap()}); // if some, unwrap
                         match found {
-                            Some(event) => (StateAction::Pop, Some(event)),
-                            None => (StateAction::None, None)
+                            Some(event) => self.gameplay_state.event(board_state, event),
+                            None => Box::new(take(self))
                         }
                     }
                 }
             },
 
             GameEvent::IO(Event::Key(Key::Escape, ButtonState::Released)) => {
-                (StateAction::Pop, Some(GameEvent::GameEnded))
+                Box::new(GameEndedState{})
             },
-            _ => (StateAction::None, None)
+            _ => Box::new(take(self))
         }
     }
 
-    fn update(&mut self, board_state: &mut Option<BoardState>) -> Option<GameEvent> {
-        None
+    fn update(&mut self, board_state: &mut Option<BoardState>) -> Box<dyn AutomatonState> {
+        Box::new(take(self))
     }
 
     // TODO: make widgets draw to Surface, and arrange the Surfaces
