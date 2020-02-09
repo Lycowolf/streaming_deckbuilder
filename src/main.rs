@@ -99,7 +99,9 @@ impl Game {
         let mut board = Vec::new();
         board.push(Card { name: Box::new(String::from("x")) });
         board.push(Card { name: Box::new(String::from("y")) });
+        board.push(Card { name: Box::new(String::from("x")) });
         board.push(Card { name: Box::new(String::from("z")) });
+        board.push(Card { name: Box::new(String::from("x")) });
         Box::new(Self { data, board })
     }
 
@@ -164,7 +166,9 @@ impl State for UI {
         let mut taken_self = take(self);
         match event {
             Event::Action => {
-                let card = taken_self.gameplay_state.get_cards().iter().next();
+                //let card = taken_self.gameplay_state.get_cards().iter().next();
+                let card = taken_self.gameplay_state.get_cards().get(2);
+                //println!("Got card: {}", card);
                 match card {
                     None => panic!("No card"),
                     Some(card) => {
