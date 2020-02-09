@@ -6,8 +6,6 @@ mod game_objects;
 mod game_logic;
 
 use quicksilver::prelude::*;
-use quicksilver::graphics::View;
-use std::process::exit;
 
 use automaton::Automaton;
 use ui::LoadingState;

@@ -40,7 +40,7 @@ impl BoardState {
 
      fn play_card(&mut self, card: usize) {
         if !(0..self.hand.cards.len()).contains(&card) {
-            panic!("WTF? Playing card not in hand? I should play card #{:?} from my hand: {:?}", card, self.hand);
+            panic!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card, self);
         }
         let played = self.hand.cards.remove(card);
 
@@ -114,39 +114,50 @@ impl BoardState {
     }
 }
 
+impl Default for BoardState {
+    fn default() -> Self {
+        Self::setup(None)
+    }
+}
+
 #[derive(Debug, Default)]
-pub struct GameplayState;
+pub struct GameplayState {
+    board: BoardState
+}
 
 impl GameplayState {
-    pub fn new() -> Self {
-        Self
+    pub fn new(mut board: BoardState) -> Self {
+        board.begin_turn();
+        println!("Created a new board: {:?}", board);
+        Self { board }
+    }
+
+    pub fn new_with_ui(mut board: BoardState) -> Box<TakeTurnState> {
+        let gameplay_state = Box::new(Self::new(board));
+        println!("Wrapping this gameplay state: {:?}", gameplay_state);
+        TakeTurnState::new(gameplay_state)
+    }
+
+    pub fn get_board(&self) -> &BoardState {
+        &self.board
     }
 }
 
 impl AutomatonState for GameplayState {
-    fn event(&mut self, board_state: &mut Option<BoardState>, event: GameEvent) -> Box<dyn AutomatonState> {
+    fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
         let mut taken_self = take(self);
-        // TODO:
-        // we want to start processing game logic right away, not waiting for events (except the ones we ask the UI for).
-        // Modify automaton to always send a StateEntered event when stack changes?
-        // Or we might to allow update() to return a new event (that would be probably good for timers etc. anyway).
         println!("GameState received event: {:?}", event);
-        let mut board = board_state.as_mut().unwrap();
 
         match event {
-            GameEvent::Started => {
-                board.begin_turn();
-                TakeTurnState::new(Box::new(taken_self)).event( board_state, GameEvent::Started)
-            } 
             GameEvent::CardPicked(card) => {
-                board.play_card(card);
-                TakeTurnState::new(Box::new(taken_self)).event(board_state, GameEvent::Started)
+                taken_self.board.play_card(card);
+                TakeTurnState::new(Box::new(taken_self))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::EndTurn => {
-                board.end_turn();
-                board.begin_turn();
-                TakeTurnState::new(Box::new(taken_self)).event(board_state, GameEvent::Started)
+                taken_self.board.end_turn();
+                taken_self.board.begin_turn();
+                TakeTurnState::new(Box::new(taken_self))
             },
             GameEvent::GameEnded => Box::new(GameEndedState{}),
             _ => {
@@ -155,7 +166,7 @@ impl AutomatonState for GameplayState {
         }
     }
 
-    fn update(&mut self, board_state: &mut Option<BoardState>) -> Box<dyn AutomatonState> {
+    fn update(&mut self) -> Box<dyn AutomatonState> {
         Box::new(take(self))
     }
 }
