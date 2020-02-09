@@ -145,19 +145,18 @@ impl GameplayState {
 
 impl AutomatonState for GameplayState {
     fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
-        let mut taken_self = take(self);
         println!("GameState received event: {:?}", event);
 
         match event {
             GameEvent::CardPicked(card) => {
-                taken_self.board.play_card(card);
-                TakeTurnState::new(Box::new(taken_self))
+                self.board.play_card(card);
+                TakeTurnState::new(Box::new(take(self)))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::EndTurn => {
-                taken_self.board.end_turn();
-                taken_self.board.begin_turn();
-                TakeTurnState::new(Box::new(taken_self))
+                self.board.end_turn();
+                self.board.begin_turn();
+                TakeTurnState::new(Box::new(take(self)))
             },
             GameEvent::GameEnded => Box::new(GameEndedState{}),
             _ => {
