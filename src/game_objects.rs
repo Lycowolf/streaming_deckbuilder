@@ -22,7 +22,7 @@ pub struct Card {
     pub on_play : Vec<Effect>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Hand {
     pub size : usize,
     pub cards : Vec<Card>
@@ -38,7 +38,7 @@ impl Hand {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Deck {
     cards : VecDeque<Card>
 }
@@ -98,7 +98,7 @@ impl Deck {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NumberMap {
     changed : HashMap<String, i16>
 }

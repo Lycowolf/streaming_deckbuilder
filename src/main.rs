@@ -6,8 +6,6 @@ mod game_objects;
 mod game_logic;
 
 use quicksilver::prelude::*;
-use quicksilver::graphics::View;
-use std::process::exit;
 
 use automaton::Automaton;
 use ui::LoadingState;
@@ -26,16 +24,12 @@ impl State for Game {
     }
 
     fn event(&mut self, event: &Event, _window: &mut Window) -> Result<()> {
-        if self.automaton.event(event) {
-            exit(0)
-        }
+        self.automaton.event(event);
         Ok(())
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        if self.automaton.update() {
-            exit(0)
-        }
+        self.automaton.update();
         Ok(())
     }
  
