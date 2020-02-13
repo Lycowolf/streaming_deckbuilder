@@ -9,7 +9,7 @@ use crate::ui::TakeTurnState;
 use crate::game_objects::*;
 use std::mem::take;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BoardState {
     pub hand: Box<Hand>,
     deck: Box<Deck>,
@@ -30,7 +30,7 @@ impl BoardState {
         
         let deck_node_name = "test_deck";
         let store_node = "build_store";
-        let trade_row = "kaiju_trade";
+        let trade_row = "kaiju_store";
         let hand_size = 5;
 
 
@@ -168,11 +168,12 @@ impl BoardState {
     }
 }
 
-impl Default for BoardState {
-    fn default() -> Self {
-        Self::load_board("cards.json")
-    }
-}
+// impl Default for BoardState {
+//     fn default() -> Self {
+//         print!("Default needed");
+//         //Self::load_board("cards.json")
+//     }
+// }
 
 #[derive(Debug, Default)]
 pub struct GameplayState {

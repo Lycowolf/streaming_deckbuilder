@@ -26,7 +26,7 @@ pub struct Card {
 
 pub type CardFactory = HashMap<String, Card>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Hand {
     pub size: usize,
     pub cards: Vec<Card>
@@ -42,7 +42,7 @@ impl Hand {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Deck {
     cards: VecDeque<Card>
 }
@@ -109,7 +109,7 @@ impl Deck {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct NumberMap {
     changed: HashMap<String, i16>
 }
@@ -154,7 +154,14 @@ pub enum StoreType {
     Drafted{size: i8, from_deck: String}
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+impl Default for StoreType {
+    fn default() -> StoreType {
+        StoreType::Fixed{items: Vec::<String>::new()}
+    }
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Store {
     pub store_type: StoreType,
     pub menu: Vec<Card>,
