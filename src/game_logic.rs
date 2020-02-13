@@ -16,7 +16,9 @@ pub struct BoardState {
     pub globals: Box<NumberMap>,
     turn: u16,
     store_fixed: Box<Store>,
-    store_trade: Box<Store>
+    store_trade: Box<Store>,
+    buildings: Box<Buildings>,
+    kaiju_zone: Box<Vec<Card>>
 }
 
 impl BoardState {
@@ -29,6 +31,7 @@ impl BoardState {
     pub fn load_board(filename: &str) -> BoardState {
         
         let deck_node_name = "test_deck";
+        let buildings_node = "starter_buildings";
         let store_node = "build_store";
         let trade_row = "kaiju_store";
         let hand_size = 5;
@@ -62,6 +65,8 @@ impl BoardState {
 
         let hand = Hand { size: hand_size, cards: Vec::<Card>::with_capacity(hand_size)};
 
+        let buildings = Buildings::from_jsom(&json, buildings_node, &factory);
+
         print!("Loading done");
 
         BoardState {
@@ -70,7 +75,9 @@ impl BoardState {
             deck: draw_deck,
             globals: NumberMap::new(),
             store_fixed: Box::new(build_store),
-            store_trade: Box::new(kaiju_store)
+            store_trade: Box::new(kaiju_store),
+            buildings: Box::new(buildings),
+            kaiju_zone: Box::new(Vec::<Card>::new())
         }
     }
 
@@ -85,16 +92,7 @@ impl BoardState {
         let mut returning = false;
 
         for effect in &played.on_play {
-            match effect {
-                Effect::Echo{msg} => println!("  {}", msg),
-                Effect::Global{key, val} => self.globals.add(&key, *val),
-                Effect::None => println!("  It does nothing"),
-                Effect::Return => { returning = true; }
-            }
-        }
-
-        if returning {
-            self.deck.add(played)
+            self.evaluate_effect(effect, &played)
         }
     }
 
@@ -104,18 +102,32 @@ impl BoardState {
         }
 
         match self.deck.draw() {
+            None => false,
             Some(card) => {
-                println!("Drawn card: {}", card.name);
-                self.hand.cards.push(card);
-                true
-                },
-            None => false
+                match card.draw_to {
+                    DrawTo::Hand => {
+                        println!("Drawn card: {}", card.name);
+                        self.hand.cards.push(card);
+                    },
+                    DrawTo::Kaiju => {
+                        println!("Raaar! Kaiju came: {}", card.name);
+                        self.kaiju_zone.push(card);
+                    }
+                };
+                
+                true},
         }
     }
 
     pub fn begin_turn(&mut self) {
         println!("Starting turn {}", self.turn);
+
         // process on_begin
+        for building in self.buildings.list.iter() {
+            for eff in building.on_turn_end.iter() {
+                //self.evaluate_effect(eff, building)
+            }
+        }
 
         // draw full hand
         while !self.hand.is_full() {
@@ -129,10 +141,33 @@ impl BoardState {
         println!("Ending turn {}", self.turn);
         println!();
 
-        // proc on_end
+        for kaiju in self.kaiju_zone.iter() {
+            for eff in kaiju.on_strike.iter() {
+                //self.evaluate_effect(eff, kaiju)
+            }
+        }
+
+        for building in self.buildings.list.iter() {
+            for eff in building.on_turn_end.iter() {
+                //self.evaluate_effect(eff, building)
+            }
+        }
+        
+        self.globals.reset_all();
 
         // increase turn counter
         self.turn += 1;
+    }
+
+    pub fn evaluate_effect(&mut self, effect: &Effect, card: &Card) {
+        match effect {
+            Effect::Echo{msg} => println!("  {}", msg),
+            Effect::Global{key, val} => self.globals.add(&key, *val),
+            Effect::None => println!("  It does nothing"),
+            Effect::Return => { self.deck.add(card.clone()) },
+            Effect::ToBuildings => { self.buildings.add(card.clone()) },
+            Effect::Break => { self.buildings.break_one() }
+        }
     }
 
     pub fn report_hand(&self) {
@@ -149,22 +184,14 @@ impl BoardState {
         self.report_hand();
     }
 
-    fn find_index_in_store(&self, store: &Store, card: &Card) -> Option<usize> {
-        store.menu.iter().position(|c| card.eq(c))
-    }
-
-    fn find_card_in_stores(&mut self, card: &Card) -> (&mut Store, usize) {
-        match self.find_index_in_store(&self.store_fixed, &card) {
-            Some(idx) => { return (self.store_fixed.as_mut(), idx); },
-            None => ()
-        };
-
-        match self.find_index_in_store(&self.store_trade, &card) {
-            Some(idx) => { return (self.store_trade.as_mut(), idx); },
-            None => ()
-        };
-
-        panic!("Card not found in stores;")
+    pub fn store_by_name(&mut self, name: &str) -> &mut Store {
+        if name == self.store_fixed.name {
+            self.store_fixed.as_mut()
+        } else if name == self.store_trade.name {
+            self.store_trade.as_mut()
+        } else {
+            panic!("Buy in unknown store")
+        }
     }
 }
 
@@ -208,18 +235,13 @@ impl AutomatonState for GameplayState {
                 TakeTurnState::new(Box::new(take(self)))
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
-            GameEvent::CardBought(card_idx) => {
-                let store = self.board.store_fixed.as_mut();
+            GameEvent::CardBought(store_name, card_idx) => {
 
-                if let Some(card) = store.menu.get(card_idx) {
-                    self.board.globals.add(&card.cost_currency, -card.cost);
-                    self.board.deck.add(card.clone());
+                let store = self.board.store_by_name(&store_name);
+                let card = store.buy_card(card_idx);
 
-                    if let StoreType::Drafted{size: _, from_deck: _} = store.store_type {
-                        store.menu.remove(card_idx);
-                        store.refill();
-                    }
-                }
+                self.board.globals.add(&card.cost_currency, -card.cost);
+                self.board.deck.add(card.clone());
 
                 TakeTurnState::new(Box::new(take(self)))
             }

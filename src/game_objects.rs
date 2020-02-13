@@ -13,15 +13,35 @@ pub enum Effect {
     Echo{msg: String},
     Global{key: String, val: i16},
     Return,
+    ToBuildings,
+    Break,
     None
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DrawTo {
+    Hand,
+    Kaiju
+}
+
+impl Default for DrawTo {
+    fn default() -> DrawTo {
+        DrawTo::Hand
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Card {
     pub name: String,
     pub on_play: Vec<Effect>,
+    pub on_turn_begin: Vec<Effect>,
+    pub on_turn_end: Vec<Effect>,
+    pub on_strike: Vec<Effect>,
+    pub on_defend: Vec<Effect>,
     pub cost: i16,
-    pub cost_currency: String
+    pub cost_currency: String,
+    pub draw_to: DrawTo
 }
 
 pub type CardFactory = HashMap<String, Card>;
@@ -160,9 +180,47 @@ impl Default for StoreType {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Buildings {
+    pub list: Vec<Card>
+}
+
+impl Buildings {
+    pub fn add(&mut self, card: Card) {
+        self.list.push(card)
+    }
+
+    pub fn empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
+    pub fn break_one(&mut self) {
+        self.list.remove(0);
+    }
+
+    pub fn from_jsom(json: &serde_json::value::Value, node: &str, factory: &CardFactory) -> Self {
+        let source_node = json.get(node).expect(format!("store node {} not found", node).as_str()).clone();
+        let data: HashMap<String, u16> =  serde_json::from_value(source_node)
+                                                .expect("Malformed starting building list");
+
+        let mut buildings = Buildings{ list: Vec::<Card>::new() };
+        for (key, num) in data.iter() {
+            for _ in 0..*num {
+                if factory.contains_key(key) {
+                    let card = factory.get(key).unwrap().clone();
+                    buildings.add(card);
+                }
+            }
+        };
+
+        buildings
+    }
+}
+
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Store {
+    pub name: String,
     pub store_type: StoreType,
     pub menu: Vec<Card>,
     deck: Option<Box<Deck>>
@@ -174,7 +232,11 @@ impl Store {
 
         let store_type : StoreType = serde_json::from_value(source_node).expect("Malformed store description");
 
-        let mut store = Store { store_type: store_type, menu: Vec::<Card>::new(), deck: None };
+        let mut store = Store { name: node.to_string(),
+                                store_type: store_type,
+                                menu: Vec::<Card>::new(),
+                                deck: None };
+
         store.populate(factory, &json);
 
         store
@@ -207,6 +269,18 @@ impl Store {
                 self.deck = Some(deck);
             }
         }
+
+    }
+
+    pub fn buy_card(&mut self, card_idx: usize) -> Card {
+        let card = self.menu.get(card_idx).expect("Bought card not in store") .clone();
+
+        if let StoreType::Drafted{size: _, from_deck: _} = self.store_type {
+            self.menu.remove(card_idx);
+            self.refill();
+        }
+
+        card
 
     }
 

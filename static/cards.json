@@ -10,9 +10,13 @@
           {"effect": "Global", "key": "Build", "val": 2 }
         ], "cost": 2, "cost_currency": "Build"},
 
+      "house": {"name": "House", "on_play": [
+        {"effect": "ToBuildings"}
+      ], "cost": 1, "CostCurrency": "Build"},
+
       "wall": {"name": "Warding Wall", "on_play": [
           {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },
-          {"effect": "Global", "key": "Build", "val": -3 }
+          {"effect": "ToBuildings" }
         ], "cost": 3, "cost_currency": "Build"},
 
       "tank": {"name": "Tanks", "on_play": [
@@ -20,17 +24,17 @@
           {"effect": "Global", "key": "Attack", "val": 1 }
         ], "cost": 2, "cost_currency": "Build"},
 
-      "kaiju": {"name": "Summon kaiju", "on_play": [
+      "kaiju": {"name": "Regular kaiju", "on_strike": [
           {"effect": "Echo", "msg": "I see a bad moon rising" },
-          {"effect": "Global", "key": "Evil", "val": 1 },
-          {"effect": "Return"}
-        ], "cost": 1, "cost_currency": "Evil"},
+          {"effect": "Break"}
+        ], "cost": 1, "cost_currency": "Evil", "draw_to": "Kaiju"},
         
-      "daikaiju": {"name": "MAGMA KRAKEN!", "on_play": [
+      "daikaiju": {"name": "MAGMA KRAKEN!", "on_strike": [
           {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
-          {"effect": "Global", "key": "Evil", "val": 3 },
-          {"effect": "Return"}
-        ], "cost": 3, "cost_currency": "Evil"},
+          {"effect": "Break"},
+          {"effect": "Break"},
+          {"effect": "Break"}
+        ], "cost": 3, "cost_currency": "Evil", "draw_to": "Kaiju"},
       "googles": {"name": "Googles", "on_play": [
           {"effect": "None"}
         ], "cost": 1, "cost_currency": "Evil"}
@@ -39,6 +43,10 @@
   "starter_deck": {
       "build": 8,
       "kaiju": 2
+  },
+
+  "starter_buildings": {
+    "house": 5
   },
 
   "test_deck": {
