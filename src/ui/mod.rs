@@ -9,7 +9,14 @@ use derivative::*;
 use std::mem::take;
 
 mod widgets;
+
 use widgets::*;
+use std::collections::HashMap;
+use crate::game_objects::GameData;
+
+pub const WINDOW_SIZE_W: f32 = 800.0;
+pub const WINDOW_SIZE_H: f32 = 600.0;
+const PLAYER_BOARD_FROM_TOP: f32 = 200.0;
 
 #[derive(Debug, Default)]
 pub struct LoadingState {
@@ -29,13 +36,12 @@ impl AutomatonState for LoadingState {
         Box::new(take(self))
     }
 
-    fn draw(&self, window: &mut Window) -> () {
-        window.draw(&Circle::new((300, 300), 32), Col(Color::BLUE));
+    fn update(&mut self) -> Box<dyn AutomatonState> {
+        GameplayState::new_with_ui(take(self).board_state) // TODO async load
     }
 
-    fn update(&mut self) -> Box<dyn AutomatonState> {
-        // TODO async load
-        GameplayState::new_with_ui(take(self).board_state)
+    fn draw(&self, window: &mut Window) -> () {
+        window.draw(&Circle::new((300, 300), 32), Col(Color::BLUE));
     }
 }
 
@@ -54,12 +60,15 @@ impl TakeTurnState {
     pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
         let font = Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file");
 
-        let card_size = Vector::new(75f32, 120f32);
+        let card_size = Vector::new(CARD_WIDTH, CARD_HEIGHT);
+        let card_width = card_size.x_comp();
+        let h_gap = Vector::new(CARD_PAD_HORIZONTAL, 0);
+        let hand_offset_top_left = Vector::new(180.0, 410.0);
 
         let mut widgets = Vec::new();
         widgets.push(Box::new(CardWidget::new(
             &"Draw pile\n\nClick to\nend turn".to_string(),
-            Vector::new(45, 390),
+            Vector::new(UI_UNIT * 3.0, PLAYER_BOARD_FROM_TOP + (WINDOW_SIZE_H - PLAYER_BOARD_FROM_TOP) / 2.0 - CARD_HEIGHT / 2.0),
             card_size,
             &font,
             GameEvent::EndTurn,
@@ -67,14 +76,13 @@ impl TakeTurnState {
         ) as Box<dyn Widget>);
 
         let hand = &gameplay_state.get_board().hand.cards;
-        let offset_top_left = Vector::new(240.0, 465.0);
-        let gap = Vector::new(30.0, 0);
+
         for (num, card) in hand.clone().drain(..).enumerate() {
             let name = card.name.clone();
             let action_text = format!("Card {} clicked", name);
             widgets.push(Box::new(CardWidget::new(
                 &name,
-                offset_top_left + ((card_size.x_comp() + gap) * num as f32),
+                hand_offset_top_left + ((card_width + h_gap) * num as f32),
                 card_size,
                 &font,
                 GameEvent::CardPicked(num),
@@ -130,6 +138,12 @@ impl AutomatonState for TakeTurnState {
 
     // TODO: make widgets draw to Surface, and arrange the Surfaces
     fn draw(&self, window: &mut Window) -> () {
+        let horizontal_divider = Line::new(
+            Vector::new(0, PLAYER_BOARD_FROM_TOP),
+            Vector::new(WINDOW_SIZE_W, PLAYER_BOARD_FROM_TOP),
+        );
+        window.draw(&horizontal_divider, Col(Color::from_rgba(100, 100, 100, 1.0)));
+
         for widget in &self.widgets {
             widget.draw(window).unwrap();
         }

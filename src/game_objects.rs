@@ -5,7 +5,12 @@ use quicksilver::prelude::*;
 use std::collections::VecDeque;
 use std::collections::HashMap;
 use serde_derive::*;
-use itertools::Itertools; 
+use itertools::Itertools;
+use crate::game_logic::BoardState;
+
+pub struct GameData {
+    board_state: BoardState,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "effect")]
