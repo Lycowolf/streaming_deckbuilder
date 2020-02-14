@@ -8,10 +8,12 @@ use std::process::exit;
 // NOTE: we identify cards by their index in the relevant vector (hand, board, ...). We can't pass reference because
 //  the structure it resides in gets stored in / returned to different places than the event, causing problems
 //  with lifetimes.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum GameEvent {
+    Started, // usually passed to new states to run their logic immediately
     CardPicked(usize),
     CardTargeted(usize),
+    CardBought(String, usize),
     EndTurn, 
     IO(Event), // keyboard, mouse etc.
     Timeout,
