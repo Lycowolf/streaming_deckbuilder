@@ -12,10 +12,10 @@ mod widgets;
 
 use widgets::*;
 use std::collections::HashMap;
-use crate::game_objects::GameData;
+use crate::game_objects::{GameData, Card, Effect};
 
-pub const WINDOW_SIZE_W: f32 = 800.0;
-pub const WINDOW_SIZE_H: f32 = 600.0;
+pub const WINDOW_SIZE_W: f32 = 1280.0;
+pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 200.0;
 
 #[derive(Debug, Default)]
@@ -59,36 +59,33 @@ pub struct TakeTurnState {
 impl TakeTurnState {
     pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
         let font = Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file");
-
-        let card_size = Vector::new(CARD_WIDTH, CARD_HEIGHT);
-        let card_width = card_size.x_comp();
-        let h_gap = Vector::new(CARD_PAD_HORIZONTAL, 0);
         let hand_offset_top_left = Vector::new(180.0, 410.0);
 
         let mut widgets = Vec::new();
-        widgets.push(Box::new(CardWidget::new(
-            &"Draw pile\n\nClick to\nend turn".to_string(),
-            Vector::new(UI_UNIT * 3.0, PLAYER_BOARD_FROM_TOP + (WINDOW_SIZE_H - PLAYER_BOARD_FROM_TOP) / 2.0 - CARD_HEIGHT / 2.0),
-            card_size,
+
+        // Next turn button
+        widgets.push(Box::new(Button::new(
+            "End\nturn".to_string(),
+            Vector::new(UI_UNIT * 7.0, UI_UNIT * 45.0),
             &font,
             GameEvent::EndTurn,
         ),
         ) as Box<dyn Widget>);
 
+        // Hand
         let hand = &gameplay_state.get_board().hand.cards;
+        let mut hand_zone: CardZone<CardFull> = CardZone::new(
+            String::from("Hand"),
+            Vector::new(13.0 * UI_UNIT, 39.0 * UI_UNIT),
+            ZoneDirection::Horizontal
+        );
 
         for (num, card) in hand.clone().drain(..).enumerate() {
-            let name = card.name.clone();
-            let action_text = format!("Card {} clicked", name);
-            widgets.push(Box::new(CardWidget::new(
-                &name,
-                hand_offset_top_left + ((card_width + h_gap) * num as f32),
-                card_size,
-                &font,
-                GameEvent::CardPicked(num),
-            ),
-            ) as Box<dyn Widget>);
+            hand_zone.add(card, &font, GameEvent::CardPicked(num))
         }
+        widgets.push(Box::new(hand_zone));
+
+
 
         Box::new(Self {
             gameplay_state,
@@ -98,10 +95,14 @@ impl TakeTurnState {
     }
 }
 
-// This is only a placeholder, to allow us to take() ourself from &mut Self
+// This is only a placeholder, to allow us to take() ourselves from &mut Self
 impl Default for TakeTurnState {
     fn default() -> Self {
-        *Self::new(Box::new(GameplayState::default()))
+        Self {
+            gameplay_state: Box::new(GameplayState::default()),
+            widgets: Vec::new(),
+            font: Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file"), // TODO: use preloaded font (or make it optional)
+        }
     }
 }
 
