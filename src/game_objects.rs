@@ -170,6 +170,11 @@ impl NumberMap {
             println!(" {}: {}", key, val);
         }
     }
+
+    // FIXME: either implement other iter methods, or convert this into some less dynamic type and drop this method
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, i16> {
+        self.changed.iter()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -222,7 +227,7 @@ impl Buildings {
     }
 }
 
-
+// FIXME: stringly typed values are bad in Rust: make this a trait & implement it with multiple structs, or make this an enum
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Store {
     pub name: String,

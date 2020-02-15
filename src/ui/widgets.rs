@@ -17,7 +17,7 @@ pub trait Widget: std::fmt::Debug {
 
 /// Implemented by widgets that represent a card.
 pub trait CardWidget: Widget {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: GameEvent) -> Self;
+    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self;
 }
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ impl<W> CardZone<W> where W: CardWidget {
         }
     }
 
-    pub fn add(&mut self, card: Card, font: &Font, on_action: GameEvent) {
+    pub fn add(&mut self, card: Card, font: &Font, on_action: Option<GameEvent>) {
         // NOTE: each cardWidget is wrapped in half-padding on each side. Newly placed widget must also be shifted by
         // a half-padding when placed.
         match self.direction {
@@ -77,7 +77,7 @@ impl<W> CardZone<W> where W: CardWidget {
                     Some(w) => ((PAD_SIZE + w.bounding_box().size.y) * self.widgets.len() as f32),
                     None => 0.0
                 };
-                let widget_pos = self.area.pos + Vector::new(widgets_height + PAD_SIZE / 2.0, PAD_SIZE / 2.0);
+                let widget_pos = self.area.pos + Vector::new(PAD_SIZE / 2.0, widgets_height + PAD_SIZE / 2.0);
                 let new_widget = W::new(card, widget_pos, &font, on_action);
 
                 let widget_size = new_widget.bounding_box().size;
@@ -126,13 +126,13 @@ impl<W: CardWidget> Widget for CardZone<W> {
 pub struct CardFull {
     card: Box<Card>,
     area: Rectangle,
-    on_action: GameEvent,
+    on_action: Option<GameEvent>,
     hovered: bool,
     image: Image,
 }
 
 impl CardWidget for CardFull {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: GameEvent) -> Self {
+    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
         let area = Rectangle::new(top_left, Vector::new(7.0 * UI_UNIT, 12.0 * UI_UNIT));
         let image = font.render(
             format!("{}", card.name).as_str(),
@@ -155,7 +155,7 @@ impl Widget for CardFull {
 
     fn maybe_activate(&self) -> Option<GameEvent> {
         if self.hovered {
-            Some(self.on_action.clone())
+            self.on_action.clone()
         } else {
             None
         }
@@ -186,13 +186,13 @@ impl Widget for CardFull {
 pub struct CardIcon {
     card: Box<Card>,
     area: Rectangle,
-    on_action: GameEvent,
+    on_action: Option<GameEvent>,
     hovered: bool,
     image: Image,
 }
 
 impl CardWidget for CardIcon {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: GameEvent) -> Self {
+    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
         let area = Rectangle::new(top_left, Vector::new(7.0 * UI_UNIT, 2.0 * UI_UNIT));
         let image = font.render(
             format!("{}", card.name).as_str(),
@@ -215,7 +215,7 @@ impl Widget for CardIcon {
 
     fn maybe_activate(&self) -> Option<GameEvent> {
         if self.hovered {
-            Some(self.on_action.clone())
+            self.on_action.clone()
         } else {
             None
         }
@@ -247,13 +247,13 @@ impl Widget for CardIcon {
 pub struct Button {
     text: Box<String>,
     area: Circle,
-    on_action: GameEvent,
+    on_action: Option<GameEvent>,
     hovered: bool,
     image: Image,
 }
 
 impl Button {
-    pub fn new(text: String, center: Vector, font: &Font, on_action: GameEvent) -> Self {
+    pub fn new(text: String, center: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
         let area = Circle::new(center, 2.0 * UI_UNIT);
         let image = font.render(
             text.as_str(),
@@ -276,7 +276,7 @@ impl Widget for Button {
 
     fn maybe_activate(&self) -> Option<GameEvent> {
         if self.hovered {
-            Some(self.on_action.clone())
+            self.on_action.clone()
         } else {
             None
         }
@@ -285,7 +285,7 @@ impl Widget for Button {
     fn draw(&self, window: &mut Window) -> Result<()> {
         let position = self.area.pos - (self.image.area().size / 2.0); // put image to the circle's center
 
-        let color = if self.hovered {
+        let color = if self.hovered && self.on_action.is_some() {
             Col(Color::from_rgba(100, 100, 100, 1.0))
         } else {
             Col(Color::from_rgba(50, 50, 50, 1.0))

@@ -16,7 +16,7 @@ use crate::game_objects::{GameData, Card, Effect};
 
 pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
-const PLAYER_BOARD_FROM_TOP: f32 = 200.0;
+const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
 
 #[derive(Debug, Default)]
 pub struct LoadingState {
@@ -59,8 +59,6 @@ pub struct TakeTurnState {
 impl TakeTurnState {
     pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
         let font = Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file");
-        let hand_offset_top_left = Vector::new(180.0, 410.0);
-
         let mut widgets = Vec::new();
 
         // Next turn button
@@ -68,7 +66,7 @@ impl TakeTurnState {
             "End\nturn".to_string(),
             Vector::new(UI_UNIT * 7.0, UI_UNIT * 45.0),
             &font,
-            GameEvent::EndTurn,
+            Some(GameEvent::EndTurn),
         ),
         ) as Box<dyn Widget>);
 
@@ -77,15 +75,67 @@ impl TakeTurnState {
         let mut hand_zone: CardZone<CardFull> = CardZone::new(
             String::from("Hand"),
             Vector::new(13.0 * UI_UNIT, 39.0 * UI_UNIT),
-            ZoneDirection::Horizontal
+            ZoneDirection::Horizontal,
         );
 
         for (num, card) in hand.clone().drain(..).enumerate() {
-            hand_zone.add(card, &font, GameEvent::CardPicked(num))
+            hand_zone.add(card, &font, Some(GameEvent::CardPicked(num)))
         }
         widgets.push(Box::new(hand_zone));
 
+        // TODO: refactor stores: store by name is weird
 
+        // Stores
+        let mut base_store_position = Vector::new(UI_UNIT, PLAYER_BOARD_FROM_TOP);
+        let stores = vec![&gameplay_state.get_board().store_fixed, &gameplay_state.get_board().store_trade];
+        for (num, &store) in stores.iter().enumerate() {
+            let name = &store.name;
+            let mut zone: CardZone<CardIcon> = CardZone::new(
+                String::from(name),
+                base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
+                ZoneDirection::Horizontal,
+            );
+
+            for (num, card) in store.menu.clone().drain(..).enumerate() {
+                zone.add(card, &font, Some(GameEvent::CardBought(String::from(name).clone(), num)))
+            }
+            widgets.push(Box::new(zone));
+        }
+
+        // buildings
+        let mut base_playzone_position = Vector::new(66.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP);
+
+        let mut zone: CardZone<CardIcon> = CardZone::new(
+            String::from("Buildings"),
+            base_playzone_position,
+            ZoneDirection::Vertical,
+        );
+        for (num, card) in gameplay_state.get_board().buildings.list.clone().drain(..).enumerate() {
+            zone.add(card, &font, None)
+        }
+        widgets.push(Box::new(zone));
+
+        // kaiju_zone
+        let mut zone: CardZone<CardIcon> = CardZone::new(
+            String::from("Kaiju zone"),
+            base_playzone_position + Vector::new(UI_UNIT * 9.0, 0), // 7U widget height + 1U padding + 1U gap
+            ZoneDirection::Vertical,
+        );
+
+        for (num, card) in gameplay_state.get_board().kaiju_zone.clone().drain(..).enumerate() {
+            zone.add(card, &font, None)
+        }
+        widgets.push(Box::new(zone));
+
+        let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
+        for (num, (name, value)) in gameplay_state.get_board().globals.iter().enumerate() {
+            widgets.push(Box::new(Button::new(
+                format!("{}\n {}", name, value),
+                base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,
+                &font,
+                None
+            )));
+        }
 
         Box::new(Self {
             gameplay_state,

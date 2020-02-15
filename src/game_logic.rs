@@ -13,12 +13,14 @@ use std::mem::take;
 pub struct BoardState {
     pub hand: Box<Hand>,
     deck: Box<Deck>,
+    // FIXME: Use something that have set of keys known beforehand; consider using RON (Rusty Object Notation) instead of JSON
+    //  for its support of enums
     pub globals: Box<NumberMap>,
     turn: u16,
-    store_fixed: Box<Store>,
-    store_trade: Box<Store>,
-    buildings: Box<Buildings>,
-    kaiju_zone: Box<Vec<Card>>
+    pub store_fixed: Box<Store>, // FIXME: see game_objects.rs/Store comments
+    pub store_trade: Box<Store>, // ditto
+    pub buildings: Box<Buildings>, // FIXME: make this a vector, or a type that can be iterated
+    pub kaiju_zone: Box<Vec<Card>>
 }
 
 impl BoardState {
@@ -184,11 +186,21 @@ impl BoardState {
         self.report_hand();
     }
 
-    pub fn store_by_name(&mut self, name: &str) -> &mut Store {
+    pub fn store_by_name_mut(&mut self, name: &str) -> &mut Store {
         if name == self.store_fixed.name {
             self.store_fixed.as_mut()
         } else if name == self.store_trade.name {
             self.store_trade.as_mut()
+        } else {
+            panic!("Buy in unknown store")
+        }
+    }
+
+    pub fn store_by_name(&self, name: &str) -> &Store {
+        if name == self.store_fixed.name {
+            &*self.store_fixed
+        } else if name == self.store_trade.name {
+            &*self.store_trade
         } else {
             panic!("Buy in unknown store")
         }
@@ -227,7 +239,7 @@ impl GameplayState {
 
 impl AutomatonState for GameplayState {
     fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
-        println!("GameState received event: {:?}", event);
+        println!("GameplayState received event: {:?}", event);
 
         match event {
             GameEvent::CardPicked(card) => {
@@ -237,7 +249,7 @@ impl AutomatonState for GameplayState {
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::CardBought(store_name, card_idx) => {
 
-                let store = self.board.store_by_name(&store_name);
+                let store = self.board.store_by_name_mut(&store_name);
                 let card = store.buy_card(card_idx);
 
                 self.board.globals.add(&card.cost_currency, -card.cost);
