@@ -9,6 +9,7 @@ use quicksilver::prelude::*;
 
 use automaton::Automaton;
 use ui::LoadingState;
+use ui::{WINDOW_SIZE_H, WINDOW_SIZE_W};
 
 struct Game {
     automaton: Automaton,
@@ -39,5 +40,5 @@ impl State for Game {
 }
 
 fn main() {
-    run::<Game>("Draw Geometry", Vector::new(800, 600), Settings::default());
+    run::<Game>("Draw Geometry", Vector::new(WINDOW_SIZE_W, WINDOW_SIZE_H), Settings::default());
 }

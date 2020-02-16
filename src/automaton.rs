@@ -17,7 +17,7 @@ pub enum GameEvent {
     EndTurn, 
     IO(Event), // keyboard, mouse etc.
     Timeout,
-    GameEnded
+    GameEnded,
 }
 
 impl GameEvent {
