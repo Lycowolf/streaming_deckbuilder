@@ -4,8 +4,9 @@ use derivative::*;
 use crate::automaton::*;
 use crate::game_objects::*;
 
-pub const UI_UNIT: f32 = 15.0;
-pub const TEXT_SIZE: f32 = UI_UNIT;
+// should be even: we often use half of the unit (centering etc.) and half-pixels break the text antialiasing
+pub const UI_UNIT: f32 = 16.0;
+pub const TEXT_SIZE: f32 = UI_UNIT * 1.5;
 pub const PAD_SIZE: f32 = UI_UNIT;
 
 pub trait Widget: std::fmt::Debug {

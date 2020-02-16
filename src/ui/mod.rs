@@ -17,6 +17,7 @@ use crate::game_objects::{GameData, Card, Effect};
 pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
+const FONT_FILE: &'static str = "Teko-Regular.ttf";
 
 #[derive(Debug, Default)]
 pub struct LoadingState {
@@ -58,7 +59,7 @@ pub struct TakeTurnState {
 // TODO: load fonts in LoadingState
 impl TakeTurnState {
     pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
-        let font = Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file");
+        let font = Font::load(FONT_FILE).wait().expect("Can't load font file");
         let mut widgets = Vec::new();
 
         // Next turn button
@@ -74,7 +75,7 @@ impl TakeTurnState {
         let hand = &gameplay_state.get_board().hand.cards;
         let mut hand_zone: CardZone<CardFull> = CardZone::new(
             String::from("Hand"),
-            Vector::new(13.0 * UI_UNIT, 39.0 * UI_UNIT),
+            Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
             ZoneDirection::Horizontal,
         );
 
@@ -103,7 +104,7 @@ impl TakeTurnState {
         }
 
         // buildings
-        let mut base_playzone_position = Vector::new(66.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP);
+        let mut base_playzone_position = Vector::new(60.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP);
 
         let mut zone: CardZone<CardIcon> = CardZone::new(
             String::from("Buildings"),
@@ -151,7 +152,7 @@ impl Default for TakeTurnState {
         Self {
             gameplay_state: Box::new(GameplayState::default()),
             widgets: Vec::new(),
-            font: Font::load("Roboto-Italic.ttf").wait().expect("Can't load font file"), // TODO: use preloaded font (or make it optional)
+            font: Font::load(FONT_FILE).wait().expect("Can't load font file"), // TODO: use preloaded font (or make it optional)
         }
     }
 }
