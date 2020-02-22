@@ -129,9 +129,9 @@ impl TakeTurnState {
         widgets.push(Box::new(zone));
 
         let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
-        for (num, (name, value)) in gameplay_state.get_board().globals.iter().enumerate() {
+        for (num, (currency, value)) in gameplay_state.get_board().globals.iter().enumerate() {
             widgets.push(Box::new(Button::new(
-                format!("{}\n {}", name, value),
+                format!("{:?}\n {}", currency, value),
                 base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,
                 &font,
                 None
