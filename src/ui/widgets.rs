@@ -284,7 +284,10 @@ impl Widget for Button {
     }
 
     fn draw(&self, window: &mut Window) -> Result<()> {
-        let position = self.area.pos - (self.image.area().size / 2.0); // put image to the circle's center
+        // avoid putting text on half-pixel coordinates
+        let half_size_x = (self.image.area().size / 2.0).x.ceil();
+        let half_size_y = (self.image.area().size / 2.0).y.ceil();
+        let position = self.area.pos - Vector::new(half_size_x, half_size_y); // put image to the circle's center
 
         let color = if self.hovered && self.on_action.is_some() {
             Col(Color::from_rgba(100, 100, 100, 1.0))
