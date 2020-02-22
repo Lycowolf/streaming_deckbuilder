@@ -29,6 +29,34 @@ pub enum DrawTo {
     Kaiju
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[serde(tag = "currency")]
+pub enum Globals {
+    Build,
+    Evil
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cost {
+    count: i16,
+    currency: Globals
+}
+
+impl Default for Cost {
+    fn default() -> Self {
+        Cost{ count: 0, currency: Globals::Build}
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BoardZone {
+    Hand,
+    Buildings,
+    Kaiju,
+    BuildStore,
+    KaijuStore
+}
+
 impl Default for DrawTo {
     fn default() -> DrawTo {
         DrawTo::Hand
@@ -44,8 +72,7 @@ pub struct Card {
     pub on_turn_end: Vec<Effect>,
     pub on_strike: Vec<Effect>,
     pub on_defend: Vec<Effect>,
-    pub cost: i16,
-    pub cost_currency: String,
+    pub cost: Cost,
     pub draw_to: DrawTo
 }
 
