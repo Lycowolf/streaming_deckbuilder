@@ -105,7 +105,7 @@ impl BoardState {
     pub fn evaluate_effect(&mut self, effect: &Effect, card: Card) {
         match effect {
             Effect::Echo{msg} => println!("  {}", msg),
-            Effect::Global{key, val} => self.globals.add(&key, *val),
+            Effect::Global{key, val} => self.globals.add(*key, *val),
             Effect::None => println!("  It does nothing"),
             Effect::Return => { self.deck.add(card) },
             Effect::ToBuildings => { self.buildings.add(card) },
