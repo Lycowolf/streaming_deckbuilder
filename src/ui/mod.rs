@@ -73,16 +73,11 @@ impl TakeTurnState {
         ) as Box<dyn Widget>);
 
         // Hand
-        let hand = &gameplay_state.get_board().hand.cards;
-        let mut hand_zone: CardZone<CardFull> = CardZone::new(
-            BoardZone::Hand,
-            Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
-            ZoneDirection::Horizontal,
-        );
-
-        for (num, card) in hand.clone().drain(..).enumerate() {
-            hand_zone.add(card, &font, Some(GameEvent::CardPicked(num)))
-        }
+        let hand_zone = CardZone::<CardFull>::from_container(&gameplay_state.get_board().hand,
+                                                             Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
+                                                             ZoneDirection::Horizontal, 
+                                                             &font,
+                                                             |idx, card, name| Some(GameEvent::CardPicked(idx)));
         widgets.push(Box::new(hand_zone));
 
         // TODO: refactor stores: store by name is weird
@@ -91,32 +86,26 @@ impl TakeTurnState {
         let mut base_store_position = Vector::new(UI_UNIT, PLAYER_BOARD_FROM_TOP);
         let stores = vec![&gameplay_state.get_board().store_fixed, &gameplay_state.get_board().store_trade];
         for (num, &store) in stores.iter().enumerate() {
-            let mut zone: CardZone<CardIcon> = CardZone::new(
-                store.menu.zone,
-                base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
-                ZoneDirection::Horizontal,
-            );
-
-            for (num, card) in store.menu.cards.clone().drain(..).enumerate() {
-                zone.add(card, &font, Some(GameEvent::CardBought(store.menu.zone, num)))
-            }
-            widgets.push(Box::new(zone));
+            let shop_zone = CardZone::<CardIcon>::from_container(&store.menu,
+                                                                 base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
+                                                                 ZoneDirection::Horizontal,
+                                                                 &font,
+                                                                 |idx, card, name| Some(GameEvent::CardBought(name, idx)));
+            widgets.push(Box::new(shop_zone));
         }
 
         // buildings
         let mut base_playzone_position = Vector::new(60.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP);
 
-        let mut zone: CardZone<CardIcon> = CardZone::new(
-            BoardZone::Buildings,
-            base_playzone_position,
-            ZoneDirection::Vertical,
-        );
-        for (num, card) in gameplay_state.get_board().buildings.cards.clone().drain(..).enumerate() {
-            zone.add(card, &font, None)
-        }
-        widgets.push(Box::new(zone));
+        let build_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().buildings,
+                                                              base_playzone_position,
+                                                              ZoneDirection::Vertical,
+                                                              &font,
+                                                              |idx, card, name| None);
+        widgets.push(Box::new(build_zone));
 
         // kaiju_zone
+
         let mut zone: CardZone<CardIcon> = CardZone::new(
             BoardZone::Kaiju,
             base_playzone_position + Vector::new(UI_UNIT * 9.0, 0), // 7U widget height + 1U padding + 1U gap
@@ -126,6 +115,13 @@ impl TakeTurnState {
         for (num, card) in gameplay_state.get_board().kaiju_zone.cards.clone().drain(..).enumerate() {
             zone.add(card, &font, None)
         }
+
+        let kaiju_position = base_playzone_position + Vector::new(UI_UNIT * 9.0, 0); // 7U widget height + 1U padding + 1U gap
+        let kaiju_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().kaiju_zone,
+                                                              kaiju_position,
+                                                              ZoneDirection::Vertical,
+                                                              &font,
+                                                              |idx, card, zone_id| None);
         widgets.push(Box::new(zone));
 
         let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);

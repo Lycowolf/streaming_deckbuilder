@@ -51,6 +51,17 @@ impl<W> CardZone<W> where W: CardWidget {
         }
     }
 
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, font: &Font, on_action: fn (usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+        let mut zone = CardZone::new(container.zone, top_left, direction);
+
+        for (idx, card) in container.cards.iter().enumerate() {
+            let action = on_action(idx, &card, zone.zone_id);
+            zone.add(card.clone(), font, action);
+        }
+
+        zone
+    }
+
     pub fn add(&mut self, card: Card, font: &Font, on_action: Option<GameEvent>) {
         // NOTE: each cardWidget is wrapped in half-padding on each side. Newly placed widget must also be shifted by
         // a half-padding when placed.
