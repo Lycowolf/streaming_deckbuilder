@@ -12,7 +12,7 @@
 
       "house": {"name": "House", "on_play": [
         {"effect": "ToBuildings"}
-      ], "cost": {"count": 1, "CostCurrency": "Build"}},
+      ], "cost": {"count": 1, "currency": "Build"}},
 
       "wall": {"name": "Warding Wall", "on_play": [
           {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },

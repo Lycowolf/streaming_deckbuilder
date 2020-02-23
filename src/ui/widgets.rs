@@ -35,16 +35,16 @@ pub enum ZoneDirection {
 /// Area is recalculated as widgets are added.
 #[derive(Debug)]
 pub struct CardZone<W> where W: CardWidget {
-    name: Box<String>,
+    zone_id: BoardZone,
     area: Rectangle,
     direction: ZoneDirection,
     widgets: Box<Vec<W>>,
 }
 
 impl<W> CardZone<W> where W: CardWidget {
-    pub fn new(name: String, top_left: Vector, direction: ZoneDirection) -> Self {
+    pub fn new(zone_id: BoardZone, top_left: Vector, direction: ZoneDirection) -> Self {
         Self {
-            name: Box::new(name),
+            zone_id: zone_id,
             direction,
             widgets: Box::new(Vec::new()),
             area: Rectangle::new(top_left, Vector::new(0, 0)), // TODO: leave space for title
