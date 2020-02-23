@@ -12,7 +12,7 @@ mod widgets;
 
 use widgets::*;
 use std::collections::HashMap;
-use crate::game_objects::{GameData, Card, Effect, BoardZone};
+use crate::game_objects::{GameData, Globals, Card, Effect, BoardZone};
 use crate::loading::load_board;
 
 pub const WINDOW_SIZE_W: f32 = 1280.0;
@@ -129,7 +129,9 @@ impl TakeTurnState {
         widgets.push(Box::new(zone));
 
         let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
-        for (num, (currency, value)) in gameplay_state.get_board().globals.iter().enumerate() {
+
+        for (num, currency) in Globals::in_game().iter().enumerate() {
+            let value = gameplay_state.get_board().globals.get(*currency);
             widgets.push(Box::new(Button::new(
                 format!("{:?}\n {}", currency, value),
                 base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,

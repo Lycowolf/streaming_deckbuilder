@@ -18,7 +18,7 @@ pub struct GameData {
 #[serde(tag = "effect")]
 pub enum Effect {
     Echo{msg: String},
-    Global{key: String, val: i16},
+    Global{key: Globals, val: i16},
     Return,
     ToBuildings,
     Break,
@@ -38,22 +38,27 @@ impl Default for DrawTo {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
-#[serde(tag = "currency")]
 pub enum Globals {
+    Attack,
     Build,
     Evil
+}
+
+impl Globals {
+    pub fn in_game() -> Vec<Self> {
+        vec!(Globals::Build, Globals::Attack, Globals::Evil)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cost {
     count: i16,
-    //currency: Globals
-    currency: String
+    currency: Globals
 }
 
 impl Default for Cost {
     fn default() -> Self {
-        Cost{ count: 0, currency: "".to_string()}
+        Cost{ count: 0, currency: Globals::Build }
     }
 }
 
@@ -179,23 +184,23 @@ impl Deck {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct NumberMap {
-    changed: HashMap<String, i16>
+    changed: HashMap<Globals, i16>
 }
 
 impl NumberMap {
     pub fn new() -> Box<Self> {
-        Box::<NumberMap>::new(Self { changed: HashMap::<String, i16>::new()})
+        Box::<NumberMap>::new(Self { changed: HashMap::<Globals, i16>::new()})
     }
 
-    pub fn get(&self, key: &str) -> i16 {
-        match self.changed.get(key) {
+    pub fn get(&self, key: Globals) -> i16 {
+        match self.changed.get(&key) {
             Some(val) => *val,
             None => 0
         }
     }
 
-    pub fn add(&mut self, key: &str, change: i16) {
-        let val = self.changed.entry(key.to_string()).or_insert(0);
+    pub fn add(&mut self, key: Globals, change: i16) {
+        let val = self.changed.entry(key).or_insert(0);
         *val += change;
     }
 
@@ -204,8 +209,8 @@ impl NumberMap {
         *val -= cost.count;
     }
 
-    pub fn reset(&mut self, key: &str) {
-        self.changed.remove(key);
+    pub fn reset(&mut self, key: Globals) {
+        self.changed.remove(&key);
     }
 
     pub fn reset_all(&mut self) {
@@ -214,13 +219,14 @@ impl NumberMap {
 
     pub fn report(&self) {
         println!("Game state:");
-        for (key, val) in self.changed.iter().sorted() {
-            println!(" {}: {}", key, val);
-        }
+        //FIXME or delete
+        // for (key, val) in self.changed.iter().sorted() {
+        //     println!(" {}: {}", key, val);
+        // }
     }
 
     // FIXME: either implement other iter methods, or convert this into some less dynamic type and drop this method
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, i16> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<Globals, i16> {
         self.changed.iter()
     }
 }
