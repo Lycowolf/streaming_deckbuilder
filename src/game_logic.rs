@@ -109,7 +109,7 @@ impl BoardState {
             Effect::None => println!("  It does nothing"),
             Effect::Return => { self.deck.add(card) },
             Effect::ToBuildings => { self.buildings.add(card) },
-            Effect::Break => { self.buildings.break_one() }
+            Effect::Break => { self.buildings.cards.remove(0); }
         }
     }
 
@@ -119,12 +119,6 @@ impl BoardState {
             println!(" - {}", card.name)
         }
         println!();
-    }
-
-    pub fn report(&self) {
-        self.globals.report();
-        println!();
-        self.report_hand();
     }
 
     pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {

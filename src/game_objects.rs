@@ -8,6 +8,7 @@ use serde_derive::*;
 use itertools::Itertools;
 use itertools::izip;
 use std::iter;
+use std::fmt;
 use crate::game_logic::BoardState;
 
 pub struct GameData {
@@ -47,6 +48,13 @@ pub enum Globals {
 impl Globals {
     pub fn in_game() -> Vec<Self> {
         vec!(Globals::Build, Globals::Attack, Globals::Evil)
+    }
+}
+
+impl fmt::Display for Globals {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // We know that debug formatting is OK
+        <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
@@ -116,10 +124,6 @@ impl CardContainer {
         self.cards.is_empty()
     }
 
-    pub fn break_one(&mut self) {
-        self.cards.remove(0);
-    }
-
     pub fn is_full(&self) -> bool {
         match self.size {
             Some(size) =>  self.cards.len() == size,
@@ -136,6 +140,10 @@ impl CardContainer {
         self.cards.remove(card_idx)
     }
 
+    /// Extract effects linked to speciffied event for each card in the container (effects can repeat). 
+    /// Join these lists together, tagging every effect with the card that causes it and zone the card belongs to.
+    ///
+    /// Expected use: to evaluate events (on_turn_start effects etc.)
     pub fn all_effects(&self, event_selector: fn(&Card)-> &Vec<Effect>) -> Vec<(BoardZone, Card, Effect)> {
 
         self.cards.iter()
@@ -164,10 +172,6 @@ impl Deck {
         Self{ cards: VecDeque::new() }
     }
 
-    pub fn from_vec(source: Vec<Card>) -> Self {
-        Deck{ cards: VecDeque::<Card>::from(source) }
-    }
-
     pub fn draw(&mut self) -> Option<Card> {
         self.cards.pop_front()
     }
@@ -179,6 +183,12 @@ impl Deck {
     pub fn shuffle(&self) {
         unimplemented!
         ()
+    }
+}
+
+impl From<Vec<Card>> for Deck {
+    fn from(source: Vec<Card>) -> Self {
+        Deck{ cards: VecDeque::<Card>::from(source) }
     }
 }
 
@@ -215,14 +225,6 @@ impl NumberMap {
 
     pub fn reset_all(&mut self) {
         self.changed.clear();
-    }
-
-    pub fn report(&self) {
-        println!("Game state:");
-        //FIXME or delete
-        // for (key, val) in self.changed.iter().sorted() {
-        //     println!(" {}: {}", key, val);
-        // }
     }
 
     // FIXME: either implement other iter methods, or convert this into some less dynamic type and drop this method

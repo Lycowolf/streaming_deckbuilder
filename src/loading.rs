@@ -30,7 +30,7 @@ fn parse_deck(json: &serde_json::value::Value,  node_name: &str, card_factory: &
     let data: HashMap<String, usize> =  serde_json::from_value(deck_node)
                                             .expect("Malformed deck list");
 
-    Deck::from_vec(cards_by_counts(card_factory, data))
+    Deck::from(cards_by_counts(card_factory, data))
 }
 
 fn parse_store(zone: BoardZone, json: &serde_json::value::Value, node: &str, factory: &CardFactory) -> Store {
