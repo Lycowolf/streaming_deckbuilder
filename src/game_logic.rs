@@ -124,6 +124,12 @@ impl BoardState {
                 card.available = self.globals.can_afford(&card.cost);    
             }
         }
+
+        for container in vec!(self.hand.as_mut(), self.buildings.as_mut(), self.kaiju_zone.as_mut()) {
+            for card in container.cards.iter_mut() {
+                card.available = true;
+            }
+        }
     }
 
 }
@@ -148,9 +154,9 @@ impl GameplayState {
     }
 
     pub fn new_with_ui(mut board: BoardState) -> Box<TakeTurnState> {
-        let gameplay_state = Box::new(Self::new(board));
+        let mut gameplay_state = Box::new(Self::new(board));
         println!("Wrapping this gameplay state: {:?}", gameplay_state);
-        TakeTurnState::new(gameplay_state)
+        gameplay_state.take_turn()
     }
 
     pub fn get_board(&self) -> &BoardState {
