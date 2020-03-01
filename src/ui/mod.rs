@@ -11,7 +11,6 @@ use std::mem::take;
 mod widgets;
 
 use widgets::*;
-use std::collections::HashMap;
 use crate::game_objects::{GameData, Globals, Card, Effect, BoardZone};
 use crate::loading::load_board;
 
@@ -84,8 +83,7 @@ impl TakeTurnState {
 
         // Stores
         let mut base_store_position = Vector::new(UI_UNIT, PLAYER_BOARD_FROM_TOP);
-        let stores = vec![&gameplay_state.get_board().store_fixed, &gameplay_state.get_board().store_trade];
-        for (num, &store) in stores.iter().enumerate() {
+        for (num, store) in gameplay_state.get_board().stores.iter().enumerate() {
             let shop_zone = CardZone::<CardIcon>::from_container(&store.menu,
                                                                  base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
                                                                  ZoneDirection::Horizontal,

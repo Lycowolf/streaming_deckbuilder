@@ -17,8 +17,7 @@ pub struct BoardState {
     //  for its support of enums
     pub globals: Box<NumberMap>,
     pub turn: u16,
-    pub store_fixed: Box<Store>, // FIXME: see game_objects.rs/Store comments
-    pub store_trade: Box<Store>, // ditto
+    pub stores: Box<Vec<Store>>,
     pub buildings: Box<CardContainer>, // FIXME: make this a vector, or a type that can be iterated
     pub kaiju_zone: Box<CardContainer>
 }
@@ -113,19 +112,17 @@ impl BoardState {
         }
     }
 
-    pub fn report_hand(&self) {
-        println!("In hand, I have:");
-        for card in self.hand.cards.iter() {
-            println!(" - {}", card.name)
-        }
-        println!();
+    pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {
+        self.stores.iter_mut()
+            .find(|s| s.menu.zone == zone)
+            .expect("Buy in unknown store")
     }
 
-    pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {
-        match zone {
-            BoardZone::BuildStore => self.store_fixed.as_mut(),
-            BoardZone::KaijuStore => self.store_trade.as_mut(),
-            _ => { panic!("Buy in unknown store"); }
+    pub fn update_availability(&mut self) {
+        for store in self.stores.iter_mut() {
+            for card in store.menu.cards.iter_mut() {
+                card.available = self.globals.can_afford(&card.cost);    
+            }
         }
     }
 
@@ -173,12 +170,23 @@ impl AutomatonState for GameplayState {
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::CardBought(zone, card_idx) => {
 
-                let store = self.board.store_by_zone(zone);
-                let card = store.buy_card(card_idx);
+                // TODO extract as method to GameBoard? I may want to use it in computing is_available, too
+                let can_afford = {
+                    let store = self.board.store_by_zone(zone);
+                    let card_cost = store.menu.cards[card_idx].cost.clone();
+                    self.board.globals.can_afford(&card_cost)
+                };
 
-                self.board.globals.pay(&card.cost);
-                self.board.deck.add(card.clone());
+                if can_afford {
+                    let store = self.board.store_by_zone(zone);
+                    let card = store.buy_card(card_idx);
 
+                    self.board.globals.pay(&card.cost);
+                    self.board.deck.add(card.clone());
+                } else {
+                    println!("Cannot buy, relevant global value too low (i.e. you do not have enough cash)")
+                }
+                
                 TakeTurnState::new(Box::new(take(self)))
             }
             GameEvent::EndTurn => {

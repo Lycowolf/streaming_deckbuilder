@@ -96,7 +96,8 @@ pub struct Card {
     pub on_strike: Vec<Effect>,
     pub on_defend: Vec<Effect>,
     pub cost: Cost,
-    pub draw_to: DrawTo
+    pub draw_to: DrawTo,
+    pub available: bool
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -217,6 +218,13 @@ impl NumberMap {
     pub fn pay(&mut self, cost: &Cost) {
         let val = self.changed.entry(cost.currency.clone()).or_insert(0);
         *val -= cost.count;
+    }
+
+    pub fn can_afford(&self, cost: &Cost) -> bool {
+        match self.changed.get(&cost.currency) {
+            Some(val) => val >= &cost.count,
+            None => cost.count <= 0
+        }
     }
 
     pub fn reset(&mut self, key: Globals) {

@@ -115,8 +115,7 @@ pub fn load_board(filename: &str) -> BoardState {
         hand: Box::new(hand),
         deck: Box::new(draw_deck),
         globals: NumberMap::new(),
-        store_fixed: Box::new(build_store),
-        store_trade: Box::new(kaiju_store),
+        stores: Box::new(vec!(build_store, kaiju_store)),
         buildings: Box::new(buildings),
         kaiju_zone: Box::new(kaiju)
     }
