@@ -19,9 +19,8 @@
           {"effect": "ToBuildings" }
         ], "cost": {"count": 3, "currency": "Build"}, "image": "kaiju.png"},
 
-      "tank": {"name": "Tanks", "on_play": [
-          {"effect": "Echo", "msg": "Boom! Boom!" },
-          {"effect": "Global", "key": "Attack", "val": 1 }
+      "tank": {"name": "Tanks", "target": "Kaiju", "on_play": [
+          {"effect": "Kill"}
         ], "cost": {"count": 2, "currency": "Build"}, "image": "kaiju.png"},
 
       "kaiju": {"name": "Regular kaiju", "on_strike": [

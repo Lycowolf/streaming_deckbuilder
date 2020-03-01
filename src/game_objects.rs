@@ -23,6 +23,8 @@ pub enum Effect {
     Return,
     ToBuildings,
     Break,
+    Kill,
+    Bounce,
     None
 }
 
@@ -99,6 +101,7 @@ pub struct Card {
     pub draw_to: DrawTo,
     pub available: bool,
     pub image: String,
+    pub target: BoardZone
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]

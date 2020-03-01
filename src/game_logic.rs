@@ -5,7 +5,7 @@ use serde_derive::*;
 use quicksilver::prelude::*;
 
 use crate::automaton::*;
-use crate::ui::TakeTurnState;
+use crate::ui::{TakeTurnState, TargetingState};
 use crate::game_objects::*;
 use crate::loading::Assets;
 use std::mem::take;
@@ -40,10 +40,24 @@ impl BoardState {
 
         println!("Played card {}", played.name);
 
-        let mut returning = false;
-
         for effect in &played.on_play {
             self.evaluate_effect(effect, played.clone())
+        }
+    }
+
+    fn play_card_on_target(&mut self, card_idx: usize, target_zone: BoardZone, target_idx: usize) {
+        if !(0..self.hand.cards.len()).contains(&card_idx) {
+            panic!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card_idx, self);
+        }
+        let played = self.hand.cards.remove(card_idx);
+        let target_container = self.container_by_zone(target_zone);
+        let target = target_container.cards[target_idx].clone();
+
+        println!("Played card {} on target {}", played.name, target.name);
+
+        for effect in &played.on_play {
+            self.evaluate_effect(effect, played.clone());
+            self.evaluate_targeted_effect(effect, target_container, target_idx);
         }
     }
 
@@ -120,6 +134,17 @@ impl BoardState {
         }
     }
 
+    pub fn evaluate_targeted_effect(&mut self, effect: &Effect, target_container: &mut CardContainer, target_idx: usize) {
+        match effect {
+            Effect::Kill => { target_container.cards.remove(target_idx); },
+            Effect::Bounce => {
+                let target = target_container.cards.remove(target_idx);
+                self.deck.add(target);
+            },
+            _ => ()
+        }
+    }
+
     pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {
         self.stores.iter_mut()
             .find(|s| s.menu.zone == zone)
@@ -139,6 +164,18 @@ impl BoardState {
             }
         }
     }
+
+    pub fn container_by_zone(&mut self, zone: BoardZone) -> &mut CardContainer {
+        match zone {
+            BoardZone::Buildings => self.buildings.as_mut(),
+            BoardZone::Hand => self.hand.as_mut(),
+            BoardZone::Kaiju => self.kaiju_zone.as_mut(),
+            BoardZone::BuildStore => &mut self.store_by_zone(zone).menu,
+            BoardZone::KaijuStore => &mut self.store_by_zone(zone).menu,
+            BoardZone::None => { panic!("Do not access None zone.") }
+        }
+    }
+
 }
 
 // impl Default for BoardState {
@@ -187,11 +224,29 @@ impl AutomatonState for GameplayState {
         println!("GameplayState received event: {:?}", event);
 
         match event {
-            GameEvent::CardPicked(card) => {
-                self.board.play_card(card);
-                self.take_turn()
-            }
-            //GameEvent::CardTargeted => (StateAction::None, None),
+            GameEvent::CardPicked(card_idx) => {
+                let card_target = self.board.hand.cards[card_idx].target;
+                match card_target {
+                    BoardZone::None => {
+                        self.board.play_card(card_idx);
+                        TakeTurnState::new(Box::new(take(self)))
+                    },
+                    _ => {
+                        TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target)
+                    }
+                    
+                }
+            }, 
+            GameEvent::CardTargeted(card_zone, card_idx, target_zone, target_idx) => {
+                match target_zone {
+                    BoardZone::None => TakeTurnState::new(Box::new(take(self))),  // No target,  nothing happens
+                    _ => {
+                        
+                        self.board.play_card_on_target(card_idx, target_zone, target_idx);
+                        TakeTurnState::new(Box::new(take(self)))
+                    }
+                }
+            },
             GameEvent::CardBought(zone, card_idx) => {
 
                 // TODO extract as method to GameBoard? I may want to use it in computing is_available, too

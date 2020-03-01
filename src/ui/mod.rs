@@ -161,3 +161,94 @@ impl AutomatonState for TakeTurnState {
         }
     }
 }
+
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct TargetingState {
+    gameplay_state: Box<GameplayState>,
+    widgets: Vec<Box<dyn Widget>>,
+    #[derivative(Debug = "ignore")]
+    font: Font,
+    acting_card_source: BoardZone,
+    acting_card_idx: usize,
+    target_zone: BoardZone
+}
+
+// TODO: load fonts in LoadingState
+impl TargetingState {
+    pub fn new(gameplay_state: Box<GameplayState>, acting_card_source: BoardZone, acting_card_idx: usize, target_zone: BoardZone) -> Box<Self> {
+
+        let font = Font::load(FONT_FILE).wait().expect("Can't load font file");
+        let mut widgets = Vec::new();
+
+        // TODO create widgets
+
+        Box::new(Self {
+            gameplay_state,
+            widgets,
+            font,
+            acting_card_source,
+            acting_card_idx,
+            target_zone
+        })
+    }
+
+    fn response_event(&self, target: Option<usize>) -> GameEvent {
+        match target {
+            Some(idx) => GameEvent::CardTargeted(self.acting_card_source,
+                                                 self.acting_card_idx,
+                                                 self.target_zone,
+                                                 idx),
+            None => GameEvent::CardTargeted(self.acting_card_source,
+                                            self.acting_card_idx,
+                                            BoardZone::None,
+                                            0)
+        }
+    }
+
+    fn target_selected(&mut self, target: Option<usize>) -> Box<dyn AutomatonState> {
+        let event = self.response_event(target);
+
+        self.gameplay_state.event(event)
+    }
+}
+
+// This is only a placeholder, to allow us to take() ourselves from &mut Self
+impl Default for TargetingState {
+    fn default() -> Self {
+        Self {
+            gameplay_state: Box::new(GameplayState::default()),
+            widgets: Vec::new(),
+            font: Font::load(FONT_FILE).wait().expect("Can't load font file"), // TODO: use preloaded font (or make it optional)
+            acting_card_source: BoardZone::None,
+            acting_card_idx: 0,
+            target_zone: BoardZone::None,
+        }
+    }
+}
+
+impl AutomatonState for TargetingState {
+    fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
+        match event {
+            // TODO: handle like in TakeTurnState
+
+            GameEvent::IO(Event::MouseButton(MouseButton::Left, ButtonState::Released)) => {
+                let idx = 0; // TODO find which widget activated
+
+                self.target_selected(Some(idx))  // select card idx
+            }
+            GameEvent::IO(Event::Key(Key::Escape, ButtonState::Released)) => {
+                self.target_selected(None)  // Cancel targeting
+            }
+            _ => Box::new(take(self))
+        }
+    }
+
+    fn update(&mut self) -> Box<dyn AutomatonState> {
+        Box::new(take(self))
+    }
+
+    fn draw(&self, window: &mut Window) -> () {
+        // TODO draw
+    }
+}

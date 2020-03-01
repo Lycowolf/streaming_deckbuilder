@@ -13,7 +13,7 @@ use crate::game_objects::BoardZone;
 pub enum GameEvent {
     Started, // usually passed to new states to run their logic immediately
     CardPicked(usize),
-    CardTargeted(usize),
+    CardTargeted(BoardZone, usize, BoardZone, usize),
     CardBought(BoardZone, usize),
     EndTurn, 
     IO(Event), // keyboard, mouse etc.
