@@ -105,24 +105,13 @@ impl TakeTurnState {
         widgets.push(Box::new(build_zone));
 
         // kaiju_zone
-
-        let mut zone: CardZone<CardIcon> = CardZone::new(
-            BoardZone::Kaiju,
-            base_playzone_position + Vector::new(UI_UNIT * 9.0, 0), // 7U widget height + 1U padding + 1U gap
-            ZoneDirection::Vertical,
-        );
-
-        for (num, card) in gameplay_state.get_board().kaiju_zone.cards.clone().drain(..).enumerate() {
-            zone.add(card, &font, None)
-        }
-
         let kaiju_position = base_playzone_position + Vector::new(UI_UNIT * 9.0, 0); // 7U widget height + 1U padding + 1U gap
         let kaiju_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().kaiju_zone,
                                                               kaiju_position,
                                                               ZoneDirection::Vertical,
                                                               &font,
                                                               |idx, card, zone_id| None);
-        widgets.push(Box::new(zone));
+        widgets.push(Box::new(kaiju_zone));
 
         let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
 
