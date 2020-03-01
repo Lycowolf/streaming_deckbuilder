@@ -156,6 +156,12 @@ impl GameplayState {
     pub fn get_board(&self) -> &BoardState {
         &self.board
     }
+
+    // Performs all operations needed before switching to TakeTurnState
+    fn take_turn(&mut self) -> Box<TakeTurnState> {
+        self.board.update_availability();
+        TakeTurnState::new(Box::new(take(self)))
+    }
 }
 
 impl AutomatonState for GameplayState {
@@ -165,7 +171,7 @@ impl AutomatonState for GameplayState {
         match event {
             GameEvent::CardPicked(card) => {
                 self.board.play_card(card);
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::CardBought(zone, card_idx) => {
@@ -187,12 +193,12 @@ impl AutomatonState for GameplayState {
                     println!("Cannot buy, relevant global value too low (i.e. you do not have enough cash)")
                 }
                 
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             }
             GameEvent::EndTurn => {
                 self.board.end_turn();
                 self.board.begin_turn();
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             },
             GameEvent::GameEnded => Box::new(GameEndedState{}),
             _ => {

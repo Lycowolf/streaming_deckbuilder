@@ -180,7 +180,14 @@ impl Widget for CardFull {
             let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
             let border_position = position - (border_size - self.area.size) * 0.5;
             let border_area = Rectangle::new(border_position, border_size);
-            window.draw(&border_area, Col(Color::from_rgba(100, 100, 100, 1.0)));
+
+            let color = if self.card.available {
+                Color::from_rgba(100, 100, 100, 1.0)
+            } else {
+                Color::from_rgba(200, 100, 100, 1.0)
+            };
+
+            window.draw(&border_area, Col(color));
         }
 
         let text_rect = self.image.area().translate(position);
