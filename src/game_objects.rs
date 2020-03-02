@@ -95,7 +95,7 @@ pub struct Card {
     pub on_turn_end: Vec<Effect>,
     pub on_strike: Vec<Effect>,
     pub on_defend: Vec<Effect>,
-    pub cost: Cost,
+    pub cost: Cost, // TODO: allow cards to cost more than one resource
     pub draw_to: DrawTo,
     pub available: bool
 }
