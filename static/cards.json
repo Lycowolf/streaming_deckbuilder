@@ -37,7 +37,13 @@
         ], "cost": {"count": 3, "currency": "Evil"}, "draw_to": "Kaiju"},
       "googles": {"name": "Googles", "on_play": [
           {"effect": "None"}
-        ], "cost": {"count": 1, "currency": "Evil"}}
+        ], "cost": {"count": 1, "currency": "Evil"}},
+      "evil": {"name": "Mad scientist", "on_play": [
+          {"effect": "Global", "key": "Evil", "val": 2 }
+        ], "cost": {"count": 1, "currency": "Evil"}},
+      "big_evil": {"name": "BioTech company", "on_play": [
+          {"effect": "Global", "key": "Evil", "val": 4 }
+        ], "cost": {"count": 3, "currency": "Build"}}
   },
 
   "starter_deck": {
@@ -63,7 +69,7 @@
     "daikaiju": 3
   },
 
-  "build_store": {"type": "Fixed", "items": ["build", "build2", "wall", "googles"]},
+  "build_store": {"type": "Fixed", "items": ["build", "build2", "wall", "googles", "evil", "big_evil"]},
 
   "kaiju_store": {"type": "Drafted", "size": 5, "from_deck": "kaiju_deck"}
 }
