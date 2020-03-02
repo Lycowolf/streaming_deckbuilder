@@ -108,7 +108,11 @@ impl BoardState {
             Effect::None => println!("  It does nothing"),
             Effect::Return => { self.deck.add(card) },
             Effect::ToBuildings => { self.buildings.add(card) },
-            Effect::Break => { self.buildings.cards.remove(0); }
+            Effect::Break => {
+                if self.buildings.cards.len() > 0 {
+                    self.buildings.cards.remove(0);
+                }
+            }
         }
     }
 
