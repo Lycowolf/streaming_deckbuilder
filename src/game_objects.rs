@@ -185,6 +185,10 @@ impl Deck {
         unimplemented!
         ()
     }
+
+    pub fn len(&self) -> usize {
+        self.cards.len()
+    }
 }
 
 impl From<Vec<Card>> for Deck {

@@ -51,7 +51,7 @@ impl<W> CardZone<W> where W: CardWidget {
         }
     }
 
-    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, font: &Font, on_action: fn (usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, font: &Font, on_action: fn(usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
         let mut zone = CardZone::new(container.zone, top_left, direction);
 
         for (idx, card) in container.cards.iter().enumerate() {
@@ -134,6 +134,22 @@ impl<W: CardWidget> Widget for CardZone<W> {
     }
 }
 
+fn border_color(hovered: bool, available: bool) -> Color {
+    if hovered {
+        if available {
+            Color::from_rgba(100, 100, 100, 1.0)
+        } else {
+            Color::from_rgba(200, 100, 100, 1.0)
+        }
+    } else {
+        if available {
+            Color::from_rgba(40, 100, 40, 1.0)
+        } else {
+            Color::from_rgba(100, 100, 100, 0.0) // transparent (inactive)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CardFull {
     card: Box<Card>,
@@ -176,19 +192,11 @@ impl Widget for CardFull {
     fn draw(&self, window: &mut Window) -> Result<()> {
         let position = self.area.pos;
 
-        if self.hovered {
-            let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
-            let border_position = position - (border_size - self.area.size) * 0.5;
-            let border_area = Rectangle::new(border_position, border_size);
+        let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
+        let border_position = position - (border_size - self.area.size) * 0.5;
+        let border_area = Rectangle::new(border_position, border_size);
 
-            let color = if self.card.available {
-                Color::from_rgba(100, 100, 100, 1.0)
-            } else {
-                Color::from_rgba(200, 100, 100, 1.0)
-            };
-
-            window.draw(&border_area, Col(color));
-        }
+        window.draw(&border_area, Col(border_color(self.hovered, self.card.available)));
 
         let text_rect = self.image.area().translate(position);
         window.draw(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)));
@@ -243,19 +251,11 @@ impl Widget for CardIcon {
     fn draw(&self, window: &mut Window) -> Result<()> {
         let position = self.area.pos;
 
-        if self.hovered {
-            let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
-            let border_position = position - (border_size - self.area.size) * 0.5;
-            let border_area = Rectangle::new(border_position, border_size);
+        let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
+        let border_position = position - (border_size - self.area.size) * 0.5;
+        let border_area = Rectangle::new(border_position, border_size);
 
-            let color = if self.card.available {
-                Color::from_rgba(100, 100, 100, 1.0)
-            } else {
-                Color::from_rgba(200, 100, 100, 1.0)
-            };
-
-            window.draw(&border_area, Col(color));
-        }
+        window.draw(&border_area, Col(border_color(self.hovered, self.card.available)));
 
         let text_rect = self.image.area().translate(position);
         window.draw(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)));

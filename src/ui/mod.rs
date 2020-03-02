@@ -63,8 +63,9 @@ impl TakeTurnState {
         let mut widgets = Vec::new();
 
         // Next turn button
+        // TODO: stylize as a card (we can't use CardWidget because we have to pass Card)
         widgets.push(Box::new(Button::new(
-            "End\nturn".to_string(),
+            format!("End turn\ndeck: {}", gameplay_state.get_board().deck.len()),
             Vector::new(UI_UNIT * 7.0, UI_UNIT * 45.0),
             &font,
             Some(GameEvent::EndTurn),
@@ -111,7 +112,7 @@ impl TakeTurnState {
                                                               |idx, card, zone_id| None);
         widgets.push(Box::new(kaiju_zone));
 
-        let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
+        let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 11.0 * UI_UNIT);
 
         for (num, currency) in Globals::in_game().iter().enumerate() {
             let value = gameplay_state.get_board().globals.get(*currency);
