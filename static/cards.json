@@ -19,9 +19,9 @@
           {"effect": "ToBuildings" }
         ], "cost": {"count": 3, "currency": "Build"}, "image": "kaiju.png"},
 
-      "tank": {"name": "Tanks", "target": "Kaiju", "on_play": [
-          {"effect": "Kill"}
-        ], "cost": {"count": 2, "currency": "Build"}, "image": "kaiju.png"},
+      "tank": {"name": "Tanks",
+              "target_zone": "Kaiju", "target_effect": "Kill",
+              "cost": {"count": 2, "currency": "Build"}, "image": "kaiju.png"},
 
       "kaiju": {"name": "Regular kaiju", "on_strike": [
           {"effect": "Echo", "msg": "I see a bad moon rising" },

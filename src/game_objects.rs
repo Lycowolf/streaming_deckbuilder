@@ -23,9 +23,20 @@ pub enum Effect {
     Return,
     ToBuildings,
     Break,
+    None,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TargetEffect {
+    None,
     Kill,
     Bounce,
-    None
+}
+
+impl Default for TargetEffect {
+    fn default() -> Self {
+        TargetEffect::None
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +93,12 @@ pub enum BoardZone {
     KaijuStore
 }
 
+impl BoardZone {
+    fn default_draw() -> Self {
+        BoardZone::Hand
+    }
+}
+
 impl Default for BoardZone {
     fn default() -> BoardZone {
         BoardZone::None
@@ -98,10 +115,15 @@ pub struct Card {
     pub on_strike: Vec<Effect>,
     pub on_defend: Vec<Effect>,
     pub cost: Cost,
-    pub draw_to: DrawTo,
-    pub available: bool,
+    pub available: bool,    
+
+    pub target_zone: BoardZone,
+    pub target_effect: TargetEffect,
+
     pub image: String,
-    pub target: BoardZone
+
+    #[serde(default = "BoardZone::default_draw")]
+    pub draw_to: BoardZone,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -141,8 +163,13 @@ impl CardContainer {
         self.cards[idx].clone()
     }
 
-    fn remove(&mut self, card_idx: usize) -> Card {
-        self.cards.remove(card_idx)
+    // Safe remove
+    pub fn remove(&mut self, card_idx: usize) -> Option<Card> {
+        if self.cards.len() > 0 {
+            Some(self.cards.remove(card_idx))
+        } else {
+            None
+        }
     }
 
     /// Extract effects linked to speciffied event for each card in the container (effects can repeat). 
@@ -165,7 +192,6 @@ impl PartialEq for CardContainer {
     }
 }
 impl Eq for CardContainer {}
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Deck {

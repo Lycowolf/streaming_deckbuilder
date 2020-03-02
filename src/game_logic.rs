@@ -32,32 +32,33 @@ impl BoardState {
     }
     */
 
-    fn play_card(&mut self, card: usize) {
-        if !(0..self.hand.cards.len()).contains(&card) {
-            panic!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card, self);
-        }
-        let played = self.hand.cards.remove(card);
+     fn play_card(&mut self, card: usize) -> Card {
+        let played = self.hand.remove(card)
+                        .expect(format!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card, self).as_str());
 
         println!("Played card {}", played.name);
 
         for effect in &played.on_play {
             self.evaluate_effect(effect, played.clone())
         }
+
+        played
     }
 
     fn play_card_on_target(&mut self, card_idx: usize, target_zone: BoardZone, target_idx: usize) {
-        if !(0..self.hand.cards.len()).contains(&card_idx) {
-            panic!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card_idx, self);
-        }
-        let played = self.hand.cards.remove(card_idx);
+        let played = self.play_card(card_idx);
         let target_container = self.container_by_zone(target_zone);
-        let target = target_container.cards[target_idx].clone();
 
-        println!("Played card {} on target {}", played.name, target.name);
+        println!("   on target {}", target_idx);
 
-        for effect in &played.on_play {
-            self.evaluate_effect(effect, played.clone());
-            self.evaluate_targeted_effect(effect, target_container, target_idx);
+        match played.target_effect {
+            TargetEffect::None => { print!("*Sad trombone*"); },
+            TargetEffect::Kill => { target_container.remove(target_idx); },
+            TargetEffect::Bounce => {
+                if let Some(target) = target_container.remove(target_idx) {
+                    self.deck.add(target);
+                }
+            },
         }
     }
 
@@ -69,19 +70,9 @@ impl BoardState {
         match self.deck.draw() {
             None => false,
             Some(card) => {
-                match card.draw_to {
-                    DrawTo::Hand => {
-                        println!("Drawn card: {}", card.name);
-                        self.hand.cards.push(card);
-                    }
-                    DrawTo::Kaiju => {
-                        println!("Raaar! Kaiju came: {}", card.name);
-                        self.kaiju_zone.add(card);
-                    }
-                };
-
-                true
-            }
+                self.container_by_zone(card.draw_to).add(card);
+                
+                true},
         }
     }
 
@@ -134,10 +125,10 @@ impl BoardState {
         }
     }
 
-    pub fn evaluate_targeted_effect(&mut self, effect: &Effect, target_container: &mut CardContainer, target_idx: usize) {
+    pub fn evaluate_targeted_effect(&mut self, effect: &TargetEffect, target_container: &mut CardContainer, target_idx: usize) {
         match effect {
-            Effect::Kill => { target_container.cards.remove(target_idx); },
-            Effect::Bounce => {
+            TargetEffect::Kill => { target_container.cards.remove(target_idx); },
+            TargetEffect::Bounce => {
                 let target = target_container.cards.remove(target_idx);
                 self.deck.add(target);
             },
@@ -225,7 +216,7 @@ impl AutomatonState for GameplayState {
 
         match event {
             GameEvent::CardPicked(card_idx) => {
-                let card_target = self.board.hand.cards[card_idx].target;
+                let card_target = self.board.hand.cards[card_idx].target_zone;
                 match card_target {
                     BoardZone::None => {
                         self.board.play_card(card_idx);
