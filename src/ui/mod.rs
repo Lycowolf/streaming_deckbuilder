@@ -11,8 +11,8 @@ use std::mem::take;
 mod widgets;
 
 use widgets::*;
-use std::collections::HashMap;
-use crate::game_objects::{GameData, Card, Effect};
+use crate::game_objects::{GameData, Globals, Card, Effect, BoardZone};
+use crate::loading::load_board;
 
 pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
@@ -27,7 +27,7 @@ pub struct LoadingState {
 impl LoadingState {
     pub fn new() -> Box<Self> {
         Box::new(Self {
-            board_state: BoardState::load_board("cards.json"),
+            board_state: load_board("cards.json"),
         })
     }
 }
@@ -72,66 +72,62 @@ impl TakeTurnState {
         ) as Box<dyn Widget>);
 
         // Hand
-        let hand = &gameplay_state.get_board().hand.cards;
-        let mut hand_zone: CardZone<CardFull> = CardZone::new(
-            String::from("Hand"),
-            Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
-            ZoneDirection::Horizontal,
-        );
-
-        for (num, card) in hand.clone().drain(..).enumerate() {
-            hand_zone.add(card, &font, Some(GameEvent::CardPicked(num)))
-        }
+        let hand_zone = CardZone::<CardFull>::from_container(&gameplay_state.get_board().hand,
+                                                             Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
+                                                             ZoneDirection::Horizontal, 
+                                                             &font,
+                                                             |idx, card, name| Some(GameEvent::CardPicked(idx)));
         widgets.push(Box::new(hand_zone));
 
         // TODO: refactor stores: store by name is weird
 
         // Stores
         let mut base_store_position = Vector::new(UI_UNIT, PLAYER_BOARD_FROM_TOP);
-        let stores = vec![&gameplay_state.get_board().store_fixed, &gameplay_state.get_board().store_trade];
-        for (num, &store) in stores.iter().enumerate() {
-            let name = &store.name;
-            let mut zone: CardZone<CardIcon> = CardZone::new(
-                String::from(name),
-                base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
-                ZoneDirection::Horizontal,
-            );
-
-            for (num, card) in store.menu.clone().drain(..).enumerate() {
-                zone.add(card, &font, Some(GameEvent::CardBought(String::from(name).clone(), num)))
-            }
-            widgets.push(Box::new(zone));
+        for (num, store) in gameplay_state.get_board().stores.iter().enumerate() {
+            let shop_zone = CardZone::<CardIcon>::from_container(&store.menu,
+                                                                 base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
+                                                                 ZoneDirection::Horizontal,
+                                                                 &font,
+                                                                 |idx, card, name| Some(GameEvent::CardBought(name, idx)));
+            widgets.push(Box::new(shop_zone));
         }
 
         // buildings
         let mut base_playzone_position = Vector::new(60.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP);
 
-        let mut zone: CardZone<CardIcon> = CardZone::new(
-            String::from("Buildings"),
-            base_playzone_position,
-            ZoneDirection::Vertical,
-        );
-        for (num, card) in gameplay_state.get_board().buildings.list.clone().drain(..).enumerate() {
-            zone.add(card, &font, None)
-        }
-        widgets.push(Box::new(zone));
+        let build_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().buildings,
+                                                              base_playzone_position,
+                                                              ZoneDirection::Vertical,
+                                                              &font,
+                                                              |idx, card, name| None);
+        widgets.push(Box::new(build_zone));
 
         // kaiju_zone
+
         let mut zone: CardZone<CardIcon> = CardZone::new(
-            String::from("Kaiju zone"),
+            BoardZone::Kaiju,
             base_playzone_position + Vector::new(UI_UNIT * 9.0, 0), // 7U widget height + 1U padding + 1U gap
             ZoneDirection::Vertical,
         );
 
-        for (num, card) in gameplay_state.get_board().kaiju_zone.clone().drain(..).enumerate() {
+        for (num, card) in gameplay_state.get_board().kaiju_zone.cards.clone().drain(..).enumerate() {
             zone.add(card, &font, None)
         }
+
+        let kaiju_position = base_playzone_position + Vector::new(UI_UNIT * 9.0, 0); // 7U widget height + 1U padding + 1U gap
+        let kaiju_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().kaiju_zone,
+                                                              kaiju_position,
+                                                              ZoneDirection::Vertical,
+                                                              &font,
+                                                              |idx, card, zone_id| None);
         widgets.push(Box::new(zone));
 
         let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
-        for (num, (name, value)) in gameplay_state.get_board().globals.iter().enumerate() {
+
+        for (num, currency) in Globals::in_game().iter().enumerate() {
+            let value = gameplay_state.get_board().globals.get(*currency);
             widgets.push(Box::new(Button::new(
-                format!("{}\n {}", name, value),
+                format!("{:?}\n {}", currency, value),
                 base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,
                 &font,
                 None

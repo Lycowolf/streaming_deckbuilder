@@ -35,20 +35,31 @@ pub enum ZoneDirection {
 /// Area is recalculated as widgets are added.
 #[derive(Debug)]
 pub struct CardZone<W> where W: CardWidget {
-    name: Box<String>,
+    zone_id: BoardZone,
     area: Rectangle,
     direction: ZoneDirection,
     widgets: Box<Vec<W>>,
 }
 
 impl<W> CardZone<W> where W: CardWidget {
-    pub fn new(name: String, top_left: Vector, direction: ZoneDirection) -> Self {
+    pub fn new(zone_id: BoardZone, top_left: Vector, direction: ZoneDirection) -> Self {
         Self {
-            name: Box::new(name),
+            zone_id: zone_id,
             direction,
             widgets: Box::new(Vec::new()),
             area: Rectangle::new(top_left, Vector::new(0, 0)), // TODO: leave space for title
         }
+    }
+
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, font: &Font, on_action: fn (usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+        let mut zone = CardZone::new(container.zone, top_left, direction);
+
+        for (idx, card) in container.cards.iter().enumerate() {
+            let action = on_action(idx, &card, zone.zone_id);
+            zone.add(card.clone(), font, action);
+        }
+
+        zone
     }
 
     pub fn add(&mut self, card: Card, font: &Font, on_action: Option<GameEvent>) {
@@ -169,7 +180,14 @@ impl Widget for CardFull {
             let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
             let border_position = position - (border_size - self.area.size) * 0.5;
             let border_area = Rectangle::new(border_position, border_size);
-            window.draw(&border_area, Col(Color::from_rgba(100, 100, 100, 1.0)));
+
+            let color = if self.card.available {
+                Color::from_rgba(100, 100, 100, 1.0)
+            } else {
+                Color::from_rgba(200, 100, 100, 1.0)
+            };
+
+            window.draw(&border_area, Col(color));
         }
 
         let text_rect = self.image.area().translate(position);
@@ -229,7 +247,14 @@ impl Widget for CardIcon {
             let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
             let border_position = position - (border_size - self.area.size) * 0.5;
             let border_area = Rectangle::new(border_position, border_size);
-            window.draw(&border_area, Col(Color::from_rgba(100, 100, 100, 1.0)));
+
+            let color = if self.card.available {
+                Color::from_rgba(100, 100, 100, 1.0)
+            } else {
+                Color::from_rgba(200, 100, 100, 1.0)
+            };
+
+            window.draw(&border_area, Col(color));
         }
 
         let text_rect = self.image.area().translate(position);

@@ -8,13 +8,17 @@ default-run = "game"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-quicksilver = "0.3.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serde_json = "1.0"
 json = "*"
 itertools = "*"
 derivative = "1.0"
+
+[dependencies.quicksilver]
+version = "0.3.20"
+default-features = false
+features = ["collisions", "complex_shapes", "immi_ui", "fonts", "gamepads", "saving"] # all except sound
 
 [[bin]]
 name = "game"

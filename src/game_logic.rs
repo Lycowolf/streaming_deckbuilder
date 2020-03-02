@@ -11,16 +11,15 @@ use std::mem::take;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BoardState {
-    pub hand: Box<Hand>,
-    deck: Box<Deck>,
+    pub hand: Box<CardContainer>,
+    pub deck: Box<Deck>,
     // FIXME: Use something that have set of keys known beforehand; consider using RON (Rusty Object Notation) instead of JSON
     //  for its support of enums
     pub globals: Box<NumberMap>,
-    turn: u16,
-    pub store_fixed: Box<Store>, // FIXME: see game_objects.rs/Store comments
-    pub store_trade: Box<Store>, // ditto
-    pub buildings: Box<Buildings>, // FIXME: make this a vector, or a type that can be iterated
-    pub kaiju_zone: Box<Vec<Card>>
+    pub turn: u16,
+    pub stores: Box<Vec<Store>>,
+    pub buildings: Box<CardContainer>, // FIXME: make this a vector, or a type that can be iterated
+    pub kaiju_zone: Box<CardContainer>
 }
 
 impl BoardState {
@@ -29,59 +28,6 @@ impl BoardState {
         Box::<Self>::new(Self::setup(None))
     }
     */
-
-    pub fn load_board(filename: &str) -> BoardState {
-        
-        let deck_node_name = "test_deck";
-        let buildings_node = "starter_buildings";
-        let store_node = "build_store";
-        let trade_row = "kaiju_store";
-        let hand_size = 5;
-
-
-        let file = load_file(filename)
-            .wait()
-            .expect("file should open read only");
-        let json: serde_json::Value = serde_json::from_slice(file.as_slice())
-            .expect("file should be proper JSON");
-        
-        let card_node = { json.get("cards")
-                            .expect("file should have \"cards\" node")
-                            .clone()
-                        };
-        let factory: CardFactory = serde_json::from_value(card_node)
-                .expect("Malformed card list");
-
-        let deck_node  = { json.get(deck_node_name)
-                            .expect(format!("file should have \"{}\" node", deck_node_name).as_str())
-                            .clone()
-                        };
-
-        let draw_deck = Deck::from_json(deck_node, &factory);
-
-        //let bs_node = { json.get("build_store").expect("build_store node not found").clone() };
-        let build_store = Store::from_json(&json, store_node, &factory);
-
-        //let ks_node = { json.get("kaiju_store").expect("kaiju_store node not found").clone() };
-        let kaiju_store = Store::from_json(&json, trade_row, &factory);
-
-        let hand = Hand { size: hand_size, cards: Vec::<Card>::with_capacity(hand_size)};
-
-        let buildings = Buildings::from_jsom(&json, buildings_node, &factory);
-
-        print!("Loading done");
-
-        BoardState {
-            turn: 1,
-            hand: Box::new(hand),
-            deck: draw_deck,
-            globals: NumberMap::new(),
-            store_fixed: Box::new(build_store),
-            store_trade: Box::new(kaiju_store),
-            buildings: Box::new(buildings),
-            kaiju_zone: Box::new(Vec::<Card>::new())
-        }
-    }
 
      fn play_card(&mut self, card: usize) {
         if !(0..self.hand.cards.len()).contains(&card) {
@@ -94,7 +40,7 @@ impl BoardState {
         let mut returning = false;
 
         for effect in &played.on_play {
-            self.evaluate_effect(effect, &played)
+            self.evaluate_effect(effect, played.clone())
         }
     }
 
@@ -113,7 +59,7 @@ impl BoardState {
                     },
                     DrawTo::Kaiju => {
                         println!("Raaar! Kaiju came: {}", card.name);
-                        self.kaiju_zone.push(card);
+                        self.kaiju_zone.add(card);
                     }
                 };
                 
@@ -125,10 +71,8 @@ impl BoardState {
         println!("Starting turn {}", self.turn);
 
         // process on_begin
-        for building in self.buildings.list.iter() {
-            for eff in building.on_turn_end.iter() {
-                //self.evaluate_effect(eff, building)
-            }
+        for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_begin) {
+            self.evaluate_effect(&effect, card)
         }
 
         // draw full hand
@@ -143,16 +87,12 @@ impl BoardState {
         println!("Ending turn {}", self.turn);
         println!();
 
-        for kaiju in self.kaiju_zone.iter() {
-            for eff in kaiju.on_strike.iter() {
-                //self.evaluate_effect(eff, kaiju)
-            }
+        for (_, card, effect) in self.kaiju_zone.all_effects(|c| &c.on_strike) {
+            self.evaluate_effect(&effect, card)
         }
 
-        for building in self.buildings.list.iter() {
-            for eff in building.on_turn_end.iter() {
-                //self.evaluate_effect(eff, building)
-            }
+        for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_end) {
+            self.evaluate_effect(&effect, card)
         }
         
         self.globals.reset_all();
@@ -161,50 +101,37 @@ impl BoardState {
         self.turn += 1;
     }
 
-    pub fn evaluate_effect(&mut self, effect: &Effect, card: &Card) {
+    pub fn evaluate_effect(&mut self, effect: &Effect, card: Card) {
         match effect {
             Effect::Echo{msg} => println!("  {}", msg),
-            Effect::Global{key, val} => self.globals.add(&key, *val),
+            Effect::Global{key, val} => self.globals.add(*key, *val),
             Effect::None => println!("  It does nothing"),
-            Effect::Return => { self.deck.add(card.clone()) },
-            Effect::ToBuildings => { self.buildings.add(card.clone()) },
-            Effect::Break => { self.buildings.break_one() }
+            Effect::Return => { self.deck.add(card) },
+            Effect::ToBuildings => { self.buildings.add(card) },
+            Effect::Break => { self.buildings.cards.remove(0); }
         }
     }
 
-    pub fn report_hand(&self) {
-        println!("In hand, I have:");
-        for card in self.hand.cards.iter() {
-            println!(" - {}", card.name)
+    pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {
+        self.stores.iter_mut()
+            .find(|s| s.menu.zone == zone)
+            .expect("Buy in unknown store")
+    }
+
+    pub fn update_availability(&mut self) {
+        for store in self.stores.iter_mut() {
+            for card in store.menu.cards.iter_mut() {
+                card.available = self.globals.can_afford(&card.cost);    
+            }
         }
-        println!();
-    }
 
-    pub fn report(&self) {
-        self.globals.report();
-        println!();
-        self.report_hand();
-    }
-
-    pub fn store_by_name_mut(&mut self, name: &str) -> &mut Store {
-        if name == self.store_fixed.name {
-            self.store_fixed.as_mut()
-        } else if name == self.store_trade.name {
-            self.store_trade.as_mut()
-        } else {
-            panic!("Buy in unknown store")
+        for container in vec!(self.hand.as_mut(), self.buildings.as_mut(), self.kaiju_zone.as_mut()) {
+            for card in container.cards.iter_mut() {
+                card.available = true;
+            }
         }
     }
 
-    pub fn store_by_name(&self, name: &str) -> &Store {
-        if name == self.store_fixed.name {
-            &*self.store_fixed
-        } else if name == self.store_trade.name {
-            &*self.store_trade
-        } else {
-            panic!("Buy in unknown store")
-        }
-    }
 }
 
 // impl Default for BoardState {
@@ -227,13 +154,19 @@ impl GameplayState {
     }
 
     pub fn new_with_ui(mut board: BoardState) -> Box<TakeTurnState> {
-        let gameplay_state = Box::new(Self::new(board));
+        let mut gameplay_state = Box::new(Self::new(board));
         println!("Wrapping this gameplay state: {:?}", gameplay_state);
-        TakeTurnState::new(gameplay_state)
+        gameplay_state.take_turn()
     }
 
     pub fn get_board(&self) -> &BoardState {
         &self.board
+    }
+
+    // Performs all operations needed before switching to TakeTurnState
+    fn take_turn(&mut self) -> Box<TakeTurnState> {
+        self.board.update_availability();
+        TakeTurnState::new(Box::new(take(self)))
     }
 }
 
@@ -244,23 +177,34 @@ impl AutomatonState for GameplayState {
         match event {
             GameEvent::CardPicked(card) => {
                 self.board.play_card(card);
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             } 
             //GameEvent::CardTargeted => (StateAction::None, None),
-            GameEvent::CardBought(store_name, card_idx) => {
+            GameEvent::CardBought(zone, card_idx) => {
 
-                let store = self.board.store_by_name_mut(&store_name);
-                let card = store.buy_card(card_idx);
+                // TODO extract as method to GameBoard? I may want to use it in computing is_available, too
+                let can_afford = {
+                    let store = self.board.store_by_zone(zone);
+                    let card_cost = store.menu.cards[card_idx].cost.clone();
+                    self.board.globals.can_afford(&card_cost)
+                };
 
-                self.board.globals.add(&card.cost_currency, -card.cost);
-                self.board.deck.add(card.clone());
+                if can_afford {
+                    let store = self.board.store_by_zone(zone);
+                    let card = store.buy_card(card_idx);
 
-                TakeTurnState::new(Box::new(take(self)))
+                    self.board.globals.pay(&card.cost);
+                    self.board.deck.add(card.clone());
+                } else {
+                    println!("Cannot buy, relevant global value too low (i.e. you do not have enough cash)")
+                }
+                
+                self.take_turn()
             }
             GameEvent::EndTurn => {
                 self.board.end_turn();
                 self.board.begin_turn();
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             },
             GameEvent::GameEnded => Box::new(GameEndedState{}),
             _ => {
