@@ -33,7 +33,7 @@ impl LoadingState {
     pub fn new() -> Box<Self> {
         Box::new(Self {
             board_state: load_board("cards.json"),
-            asset: Some(Box::new(Image::load("kaiju.png"))),
+            asset: Some(Box::new(Image::load("kaiju.png"))), // TODO: create assets struct and fill it with all assets
         })
     }
 }
@@ -48,7 +48,7 @@ impl AutomatonState for LoadingState {
         match result {
             Ok(Async::Ready(image)) => {
                 println!("Got image: {:?}", image.area());
-                GameplayState::new_with_ui(take(self).board_state) // TODO async load board
+                GameplayState::new_with_ui(take(self).board_state, image) // TODO async load board
             }
             Ok(Async::NotReady) => {
                 println!("Still loading...");
@@ -192,6 +192,9 @@ impl AutomatonState for TakeTurnState {
 
     // TODO: make widgets draw to Surface, and arrange the Surfaces
     fn draw(&self, window: &mut Window) -> () {
+        // FIXME: testing img drawing
+        window.draw(&Rectangle::new((0, 0), (105, 180)), Img(self.gameplay_state.get_assets()));
+
         let horizontal_divider = Line::new(
             Vector::new(0, PLAYER_BOARD_FROM_TOP),
             Vector::new(WINDOW_SIZE_W, PLAYER_BOARD_FROM_TOP),
