@@ -2,8 +2,10 @@
 
 use crate::automaton::*;
 use crate::game_logic::*;
+use quicksilver::Error as QuicksilverError;
 use quicksilver::prelude::*;
 use quicksilver::Future;
+use futures::Async;
 use serde::export::fmt::Debug;
 use derivative::*;
 use std::mem::take;
@@ -19,15 +21,19 @@ pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
 const FONT_FILE: &'static str = "Teko-Regular.ttf";
 
-#[derive(Debug, Default)]
+#[derive(Derivative, Default)]
+#[derivative(Debug)]
 pub struct LoadingState {
     board_state: BoardState,
+    #[derivative(Debug = "ignore")]
+    asset: Option<Box<dyn Future<Item=Image, Error=QuicksilverError>>>, // Option just to get Default
 }
 
 impl LoadingState {
     pub fn new() -> Box<Self> {
         Box::new(Self {
             board_state: load_board("cards.json"),
+            asset: Some(Box::new(Image::load("kaiju.png"))),
         })
     }
 }
@@ -38,7 +44,18 @@ impl AutomatonState for LoadingState {
     }
 
     fn update(&mut self) -> Box<dyn AutomatonState> {
-        GameplayState::new_with_ui(take(self).board_state) // TODO async load
+        let result = self.asset.as_mut().unwrap().poll();
+        match result {
+            Ok(Async::Ready(image)) => {
+                println!("Got image: {:?}", image.area());
+                GameplayState::new_with_ui(take(self).board_state) // TODO async load board
+            }
+            Ok(Async::NotReady) => {
+                println!("Still loading...");
+                Box::new(take(self))
+            }
+            Err(_) => { panic!("Can't load image") } // Value in Err is from another thread, and is not Sync. Yes, really.
+        }
     }
 
     fn draw(&self, window: &mut Window) -> () {
@@ -74,7 +91,7 @@ impl TakeTurnState {
         // Hand
         let hand_zone = CardZone::<CardFull>::from_container(&gameplay_state.get_board().hand,
                                                              Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
-                                                             ZoneDirection::Horizontal, 
+                                                             ZoneDirection::Horizontal,
                                                              &font,
                                                              |idx, card, name| Some(GameEvent::CardPicked(idx)));
         widgets.push(Box::new(hand_zone));
@@ -119,7 +136,7 @@ impl TakeTurnState {
                 format!("{:?}\n {}", currency, value),
                 base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,
                 &font,
-                None
+                None,
             )));
         }
 

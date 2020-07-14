@@ -108,7 +108,7 @@ pub fn load_board(filename: &str) -> BoardState {
 
     let kaiju = CardContainer::new(BoardZone::Kaiju);
 
-    print!("Loading done");
+    println!("Loading done");
 
     BoardState {
         turn: 1,
