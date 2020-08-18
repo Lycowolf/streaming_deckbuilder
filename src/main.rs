@@ -9,7 +9,7 @@ mod loading;
 use quicksilver::prelude::*;
 
 use automaton::Automaton;
-use ui::LoadingState;
+use loading::LoadingState;
 use ui::{WINDOW_SIZE_H, WINDOW_SIZE_W};
 
 struct Game {

@@ -97,7 +97,8 @@ pub struct Card {
     pub on_defend: Vec<Effect>,
     pub cost: Cost,
     pub draw_to: DrawTo,
-    pub available: bool
+    pub available: bool,
+    pub image: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]

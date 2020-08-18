@@ -2,10 +2,8 @@
 
 use crate::automaton::*;
 use crate::game_logic::*;
-use quicksilver::Error as QuicksilverError;
 use quicksilver::prelude::*;
 use quicksilver::Future;
-use futures::Async;
 use serde::export::fmt::Debug;
 use derivative::*;
 use std::mem::take;
@@ -20,48 +18,6 @@ pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
 const FONT_FILE: &'static str = "Teko-Regular.ttf";
-
-#[derive(Derivative, Default)]
-#[derivative(Debug)]
-pub struct LoadingState {
-    board_state: BoardState,
-    #[derivative(Debug = "ignore")]
-    asset: Option<Box<dyn Future<Item=Image, Error=QuicksilverError>>>, // Option just to get Default
-}
-
-impl LoadingState {
-    pub fn new() -> Box<Self> {
-        Box::new(Self {
-            board_state: load_board("cards.json"),
-            asset: Some(Box::new(Image::load("kaiju.png"))), // TODO: create assets struct and fill it with all assets
-        })
-    }
-}
-
-impl AutomatonState for LoadingState {
-    fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
-        Box::new(take(self))
-    }
-
-    fn update(&mut self) -> Box<dyn AutomatonState> {
-        let result = self.asset.as_mut().unwrap().poll();
-        match result {
-            Ok(Async::Ready(image)) => {
-                println!("Got image: {:?}", image.area());
-                GameplayState::new_with_ui(take(self).board_state, image) // TODO async load board
-            }
-            Ok(Async::NotReady) => {
-                println!("Still loading...");
-                Box::new(take(self))
-            }
-            Err(_) => { panic!("Can't load image") } // Value in Err is from another thread, and is not Sync. Yes, really.
-        }
-    }
-
-    fn draw(&self, window: &mut Window) -> () {
-        window.draw(&Circle::new((300, 300), 32), Col(Color::BLUE));
-    }
-}
 
 // TODO: cache widgets?
 #[derive(Derivative)]
@@ -193,7 +149,8 @@ impl AutomatonState for TakeTurnState {
     // TODO: make widgets draw to Surface, and arrange the Surfaces
     fn draw(&self, window: &mut Window) -> () {
         // FIXME: testing img drawing
-        window.draw(&Rectangle::new((0, 0), (105, 180)), Img(self.gameplay_state.get_assets()));
+        window.draw(&Rectangle::new((0, 0), (105, 180)), Img(&*self.gameplay_state.get_assets().images["kaiju.png"]));
+        window.draw(&Rectangle::new((110, 0), (105, 180)), Img(&*self.gameplay_state.get_assets().images["kaiju2.png"]));
 
         let horizontal_divider = Line::new(
             Vector::new(0, PLAYER_BOARD_FROM_TOP),

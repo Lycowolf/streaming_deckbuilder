@@ -7,6 +7,7 @@ use quicksilver::prelude::*;
 use crate::automaton::*;
 use crate::ui::TakeTurnState;
 use crate::game_objects::*;
+use crate::loading::Assets;
 use std::mem::take;
 use quicksilver::graphics::PixelFormat;
 
@@ -147,29 +148,14 @@ impl BoardState {
 //     }
 // }
 
-#[derive(Debug)]
-pub struct GameplayState {
-    board: BoardState,
-    assets: Image, // TODO: create an assets struct and use it here
-}
-
-impl Default for GameplayState {
-    fn default() -> Self {
-        Self {
-            board: BoardState::default(),
-            assets: Image::from_raw(&[255u8, 0u8, 255u8], 1, 1, PixelFormat::RGB).unwrap(), // debug purple
-        }
-    }
-}
-
 impl GameplayState {
-    pub fn new(mut board: BoardState, assets: Image) -> Self {
+    pub fn new(mut board: BoardState, assets: Assets) -> Self {
         board.begin_turn();
         println!("Created a new board: {:?}", board);
         Self { board, assets }
     }
 
-    pub fn new_with_ui(mut board: BoardState, assets: Image) -> Box<TakeTurnState> {
+    pub fn new_with_ui(mut board: BoardState, assets: Assets) -> Box<TakeTurnState> {
         let mut gameplay_state = Box::new(Self::new(board, assets));
         println!("Wrapping this gameplay state: {:?}", gameplay_state);
         gameplay_state.take_turn()
@@ -179,7 +165,7 @@ impl GameplayState {
         &self.board
     }
 
-    pub fn get_assets(&self) -> &Image {
+    pub fn get_assets(&self) -> &Assets {
         &self.assets
     }
 
@@ -188,6 +174,12 @@ impl GameplayState {
         self.board.update_availability();
         TakeTurnState::new(Box::new(take(self)))
     }
+}
+
+#[derive(Debug, Default)]
+pub struct GameplayState {
+    board: BoardState,
+    assets: Assets,
 }
 
 impl AutomatonState for GameplayState {
