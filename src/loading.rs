@@ -10,14 +10,21 @@ use crate::game_logic::{BoardState, GameplayState};
 use crate::game_objects::*;
 use crate::automaton::{AutomatonState, GameEvent};
 use std::mem::take;
-use futures::Async;
+use futures::{Async};
 use derivative::*;
 use quicksilver::Error as QuicksilverError;
-use quicksilver::combinators::{join_all, JoinAll};
+use quicksilver::combinators::{join_all, JoinAll, Join};
+use std::rc::Rc;
 
-#[derive(Default, Debug)]
+pub const CARD_TITLE_FONT: &'static str = "Teko-Regular.ttf";
+pub const CARD_BACKGROUND_IMG: &'static str = "card_bg.png";
+
+#[derive(Derivative, Default)]
+#[derivative(Debug)]
 pub struct Assets {
-    pub images: HashMap<String, Box<Image>>,
+    #[derivative(Debug = "ignore")]
+    pub fonts: HashMap<String, Box<Font>>, // we borrow fonts to create new data: there's no reason to hold it
+    pub images: HashMap<String, Rc<Image>>, // UI cards do hold reference to images
 }
 
 type CardFactory = HashMap<String, Card>;
@@ -136,13 +143,25 @@ pub fn load_board(json: serde_json::Value) -> BoardState {
 pub struct LoadingState {
     board_state: BoardState,
     image_names: Vec<String>,
+    font_names: Vec<String>,
     #[derivative(Debug = "ignore")]
-    // list of future images, wrapped in future
-    loading_images: Option<JoinAll<Vec<Box<dyn Future<Item=Image, Error=QuicksilverError>>>>>,  // Option just to get Default
+    // Option just to get Default
+    loading: Option<
+        Join<
+            JoinAll<
+                Vec<Box<dyn Future<Item=Font, Error=QuicksilverError>>>
+            >,
+            JoinAll<
+                Vec<Box<dyn Future<Item=Image, Error=QuicksilverError>>>
+            >
+        >
+    >,
 }
 
 impl LoadingState {
     pub fn new() -> Box<Self> {
+        let font_names = vec![CARD_TITLE_FONT.to_string()];
+
         let file = load_file("cards.json")
             .wait()
             .expect("file should open read only"); // TODO: do this asynchronously, too
@@ -153,16 +172,23 @@ impl LoadingState {
             json.get("cards").expect("file should have \"cards\" node").clone()
         ).expect("malformed card list");
 
-        let image_names = cards.values()
+        let mut image_names = cards.values()
             .map(|v| v.image.clone())
             .unique()
             .collect::<Vec<String>>();
-        println!("Loading images: {:?}", image_names);
+        image_names.push(CARD_BACKGROUND_IMG.to_string());
+        println!("Loading fonts {:?} and images: {:?}", font_names, image_names);
 
         let loading_images = join_all(
-            image_names.iter()
-                .map(|i| Box::new(Image::load(i.clone())) as Box<dyn Future<Item=Image, Error=QuicksilverError>>)
+            font_names.iter()
+                .map(|i| Box::new(Font::load(i.clone())) as Box<dyn Future<Item=Font, Error=QuicksilverError>>)
                 .collect::<Vec<Box<_>>>()
+        ).join(
+            join_all(
+                image_names.iter()
+                    .map(|i| Box::new(Image::load(i.clone())) as Box<dyn Future<Item=Image, Error=QuicksilverError>>)
+                    .collect::<Vec<Box<_>>>()
+            )
         );
 
         let board_state = load_board(json);
@@ -170,7 +196,8 @@ impl LoadingState {
         Box::new(Self {
             board_state,
             image_names,
-            loading_images: Some(loading_images),
+            font_names,
+            loading: Some(loading_images),
         })
     }
 }
@@ -181,14 +208,27 @@ impl AutomatonState for LoadingState {
     }
 
     fn update(&mut self) -> Box<dyn AutomatonState> {
-        let result = self.loading_images.as_mut().unwrap().poll();
+        let result = self.loading.as_mut().unwrap().poll();
         match result {
-            Ok(Async::Ready(images)) => {
-                let mut loaded_images = HashMap::new();
-                for (k, v) in self.image_names.iter().zip(images.iter()) {
-                    loaded_images.insert(k.clone(), Box::new(v.clone()));
+            // We use draining iterators to take ownership
+            Ok(Async::Ready((mut fonts, mut images))) => {
+                let mut loaded_fonts = HashMap::new();
+                for (k, v) in self.font_names.drain((..)).zip(fonts.drain((..))) {
+                    loaded_fonts.insert(k, Box::new(v));
                 }
-                GameplayState::new_with_ui(take(self).board_state, Assets { images: loaded_images }) // TODO async load board
+
+                let mut loaded_images = HashMap::new();
+                for (k, v) in self.image_names.drain((..)).zip(images.drain((..))) {
+                    loaded_images.insert(k, Rc::new(v));
+                }
+
+                GameplayState::new_with_ui(
+                    take(self).board_state,
+                    Assets {
+                        fonts: loaded_fonts,
+                        images: loaded_images,
+                    },
+                ) // TODO async load board
             }
             Ok(Async::NotReady) => {
                 Box::new(take(self))

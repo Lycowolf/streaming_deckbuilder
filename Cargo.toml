@@ -17,7 +17,7 @@ derivative = "1.0"
 futures = "0.1" # Use the same version as quicksilver
 
 [dependencies.quicksilver]
-version = "0.3.20"
+version = "= 0.3.20"
 default-features = false
 features = ["collisions", "complex_shapes", "immi_ui", "fonts", "gamepads", "saving"] # all except sound
 

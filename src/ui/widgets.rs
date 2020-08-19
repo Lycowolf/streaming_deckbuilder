@@ -3,11 +3,17 @@ use quicksilver::Future;
 use derivative::*;
 use crate::automaton::*;
 use crate::game_objects::*;
+use crate::loading::CARD_TITLE_FONT;
+use crate::loading::Assets;
+use std::rc::Rc;
 
 // should be even: we often use half of the unit (centering etc.) and half-pixels break the text antialiasing
 pub const UI_UNIT: f32 = 16.0;
 pub const TEXT_SIZE: f32 = UI_UNIT * 1.5;
 pub const PAD_SIZE: f32 = UI_UNIT;
+const TITLE_OFFSET: (f32, f32) = (5.0, 5.0); // card background image does not cover whole rectangle
+
+const MAX_Z_PER_WIDGET: f32 = 10.0; // when nesting widgets, child widgets will be offset by this much in Z direction
 
 pub trait Widget: std::fmt::Debug {
     fn bounding_box(&self) -> Rectangle;
@@ -18,7 +24,7 @@ pub trait Widget: std::fmt::Debug {
 
 /// Implemented by widgets that represent a card.
 pub trait CardWidget: Widget {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self;
+    fn new(card: Card, top_left: Vector, z_index: f32, assets: &Assets, on_action: Option<GameEvent>) -> Self;
 }
 
 #[derive(Debug)]
@@ -39,30 +45,32 @@ pub struct CardZone<W> where W: CardWidget {
     area: Rectangle,
     direction: ZoneDirection,
     widgets: Box<Vec<W>>,
+    z_index: f32,
 }
 
 impl<W> CardZone<W> where W: CardWidget {
-    pub fn new(zone_id: BoardZone, top_left: Vector, direction: ZoneDirection) -> Self {
+    pub fn new(zone_id: BoardZone, top_left: Vector, direction: ZoneDirection, z_index: f32) -> Self {
         Self {
             zone_id: zone_id,
             direction,
             widgets: Box::new(Vec::new()),
             area: Rectangle::new(top_left, Vector::new(0, 0)), // TODO: leave space for title
+            z_index,
         }
     }
 
-    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, font: &Font, on_action: fn (usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
-        let mut zone = CardZone::new(container.zone, top_left, direction);
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, z_index: f32, assets: &Assets, on_action: fn(usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+        let mut zone = CardZone::new(container.zone, top_left, direction, z_index);
 
         for (idx, card) in container.cards.iter().enumerate() {
             let action = on_action(idx, &card, zone.zone_id);
-            zone.add(card.clone(), font, action);
+            zone.add(card.clone(), assets, action);
         }
 
         zone
     }
 
-    pub fn add(&mut self, card: Card, font: &Font, on_action: Option<GameEvent>) {
+    pub fn add(&mut self, card: Card, assets: &Assets, on_action: Option<GameEvent>) {
         // NOTE: each cardWidget is wrapped in half-padding on each side. Newly placed widget must also be shifted by
         // a half-padding when placed.
         match self.direction {
@@ -72,7 +80,7 @@ impl<W> CardZone<W> where W: CardWidget {
                     None => 0.0
                 };
                 let widget_pos = self.area.pos + Vector::new(widgets_width + PAD_SIZE / 2.0, PAD_SIZE / 2.0);
-                let new_widget = W::new(card, widget_pos, &font, on_action);
+                let new_widget = W::new(card, widget_pos, self.z_index + MAX_Z_PER_WIDGET, &assets, on_action);
 
                 let widget_size = new_widget.bounding_box().size;
                 self.area = Rectangle::new(
@@ -90,7 +98,7 @@ impl<W> CardZone<W> where W: CardWidget {
                     None => 0.0
                 };
                 let widget_pos = self.area.pos + Vector::new(PAD_SIZE / 2.0, widgets_height + PAD_SIZE / 2.0);
-                let new_widget = W::new(card, widget_pos, &font, on_action);
+                let new_widget = W::new(card, widget_pos, self.z_index + MAX_Z_PER_WIDGET, &assets, on_action);
 
                 let widget_size = new_widget.bounding_box().size;
                 self.area = Rectangle::new(
@@ -119,7 +127,7 @@ impl<W: CardWidget> Widget for CardZone<W> {
     }
 
     fn draw(&self, window: &mut Window) -> Result<()> {
-        window.draw(&self.area, Col(Color::from_rgba(50, 50, 100, 1.0)));
+        window.draw_ex(&self.area, Col(Color::from_rgba(50, 50, 100, 1.0)), Transform::IDENTITY, self.z_index);
         for widget in self.widgets.iter() {
             widget.draw(window);
         }
@@ -138,24 +146,33 @@ impl<W: CardWidget> Widget for CardZone<W> {
 pub struct CardFull {
     card: Box<Card>,
     area: Rectangle,
+    z_index: f32,
     on_action: Option<GameEvent>,
     hovered: bool,
-    image: Image,
+    image: Rc<Image>,
+    background: Rc<Image>,
+    title: Image,
 }
 
 impl CardWidget for CardFull {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
+    fn new(card: Card, top_left: Vector, z_index: f32, assets: &Assets, on_action: Option<GameEvent>) -> Self {
         let area = Rectangle::new(top_left, Vector::new(7.0 * UI_UNIT, 12.0 * UI_UNIT));
-        let image = font.render(
+        let card = Box::new(card);
+        let title = assets.fonts[CARD_TITLE_FONT].render(
             format!("{}", card.name).as_str(),
             &FontStyle::new(TEXT_SIZE, Color::WHITE),
         ).expect("Can't render text");
+        let image = assets.images[&card.image].clone();
+        let background = assets.images[crate::loading::CARD_BACKGROUND_IMG].clone();
         Self {
-            card: Box::new(card),
+            card,
             area,
+            z_index,
             on_action,
             hovered: false,
             image,
+            background,
+            title,
         }
     }
 }
@@ -187,12 +204,13 @@ impl Widget for CardFull {
                 Color::from_rgba(200, 100, 100, 1.0)
             };
 
-            window.draw(&border_area, Col(color));
+            window.draw_ex(&border_area, Col(color), Transform::IDENTITY, self.z_index);
         }
 
-        let text_rect = self.image.area().translate(position);
-        window.draw(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)));
-        window.draw(&text_rect, Img(&self.image));
+        let text_rect = self.title.area().translate(position).translate(TITLE_OFFSET);
+        window.draw_ex(&self.area, Img(&self.background), Transform::IDENTITY, self.z_index + 1.0);
+        window.draw_ex(&self.area, Img(&self.image), Transform::IDENTITY, self.z_index + 2.0);
+        window.draw_ex(&text_rect, Img(&self.title), Transform::IDENTITY, self.z_index + 3.0);
         Ok(())
     }
 
@@ -205,21 +223,23 @@ impl Widget for CardFull {
 pub struct CardIcon {
     card: Box<Card>,
     area: Rectangle,
+    z_index: f32,
     on_action: Option<GameEvent>,
     hovered: bool,
     image: Image,
 }
 
 impl CardWidget for CardIcon {
-    fn new(card: Card, top_left: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
+    fn new(card: Card, top_left: Vector, z_index: f32, assets: &Assets, on_action: Option<GameEvent>) -> Self {
         let area = Rectangle::new(top_left, Vector::new(7.0 * UI_UNIT, 2.0 * UI_UNIT));
-        let image = font.render(
+        let image = assets.fonts[CARD_TITLE_FONT].render(
             format!("{}", card.name).as_str(),
             &FontStyle::new(TEXT_SIZE, Color::WHITE),
         ).expect("Can't render text");
         Self {
             card: Box::new(card),
             area,
+            z_index,
             on_action,
             hovered: false,
             image,
@@ -254,12 +274,12 @@ impl Widget for CardIcon {
                 Color::from_rgba(200, 100, 100, 1.0)
             };
 
-            window.draw(&border_area, Col(color));
+            window.draw_ex(&border_area, Col(color), Transform::IDENTITY, self.z_index);
         }
 
         let text_rect = self.image.area().translate(position);
-        window.draw(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)));
-        window.draw(&text_rect, Img(&self.image));
+        window.draw_ex(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)), Transform::IDENTITY, self.z_index + 1.0);
+        window.draw_ex(&text_rect, Img(&self.image), Transform::IDENTITY, self.z_index + 1.0);
         Ok(())
     }
 
@@ -273,21 +293,23 @@ impl Widget for CardIcon {
 pub struct Button {
     text: Box<String>,
     area: Circle,
+    z_index: f32,
     on_action: Option<GameEvent>,
     hovered: bool,
     image: Image,
 }
 
 impl Button {
-    pub fn new(text: String, center: Vector, font: &Font, on_action: Option<GameEvent>) -> Self {
+    pub fn new(text: String, center: Vector, z_index: f32, assets: &Assets, on_action: Option<GameEvent>) -> Self {
         let area = Circle::new(center, 2.0 * UI_UNIT);
-        let image = font.render(
+        let image = assets.fonts[CARD_TITLE_FONT].render(
             text.as_str(),
             &FontStyle::new(TEXT_SIZE, Color::WHITE),
         ).expect("Can't render text");
         Self {
             text: Box::new(text),
             area,
+            z_index,
             on_action,
             hovered: false,
             image,
@@ -321,8 +343,8 @@ impl Widget for Button {
         };
 
         let text_rect = self.image.area().translate(position);
-        window.draw(&self.area, color);
-        window.draw(&text_rect, Img(&self.image));
+        window.draw_ex(&self.area, color, Transform::IDENTITY, self.z_index);
+        window.draw_ex(&text_rect, Img(&self.image), Transform::IDENTITY, self.z_index + 1.0);
         Ok(())
     }
 

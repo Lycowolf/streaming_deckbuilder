@@ -15,7 +15,7 @@ use ui::{WINDOW_SIZE_H, WINDOW_SIZE_W};
 struct Game {
     automaton: Automaton,
 }
- 
+
 impl State for Game {
     fn new() -> Result<Game> {
         let loading = LoadingState::new();
@@ -34,7 +34,7 @@ impl State for Game {
         self.automaton.update();
         Ok(())
     }
- 
+
     fn draw(&mut self, window: &mut Window) -> Result<()> {
         self.automaton.draw(window)
     }
