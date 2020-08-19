@@ -138,6 +138,26 @@ pub fn load_board(json: serde_json::Value) -> BoardState {
     }
 }
 
+/// Loading state: loads all assets to memory and passes them to GameplayState.
+///
+/// The asset loading in Quicksilver (as described in tutorial) is awkward: it requires conditional
+/// execution whenever any asset is used. As we don't have large amount of data, it is more ergonomic
+/// to just load them all to RAM and use them directly.
+///
+/// Loading in Quicksilver is internally done using Futures (that can, but don't have to
+/// be wrapped in Assets). Futures can be nested using combinators (that themselves are Futures).
+/// Every Future has a poll() method that returns Async::NotReady when it is not yet done, and
+/// Async::Ready when its data are ready (i. e. loading is done).
+/// It must not be called afterwards: it would panic.
+///
+/// It turns out this is perfect fit for our application: we combine all assets into single Future,
+/// hook it into our event loop, polling it every update, while drawing a loading screen. When it
+/// becomes ready, we construct a new State, pass it all the assets extracted from the Future and continue.
+///
+/// Sadly, it is complicated by the fact that Quicksilver re-exports Future trait and combinators, but
+/// not the Async enum. As this enum comes from "futures" crate, we just install it in the exact same
+/// version that Quicksilver uses and use that.
+
 #[derive(Derivative, Default)]
 #[derivative(Debug)]
 pub struct LoadingState {
