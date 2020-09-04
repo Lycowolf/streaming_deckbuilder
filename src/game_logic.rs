@@ -7,7 +7,9 @@ use quicksilver::prelude::*;
 use crate::automaton::*;
 use crate::ui::TakeTurnState;
 use crate::game_objects::*;
+use crate::loading::Assets;
 use std::mem::take;
+use quicksilver::graphics::PixelFormat;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BoardState {
@@ -18,8 +20,9 @@ pub struct BoardState {
     pub globals: Box<NumberMap>,
     pub turn: u16,
     pub stores: Box<Vec<Store>>,
-    pub buildings: Box<CardContainer>, // FIXME: make this a vector, or a type that can be iterated
-    pub kaiju_zone: Box<CardContainer>
+    pub buildings: Box<CardContainer>,
+    // FIXME: make this a vector, or a type that can be iterated
+    pub kaiju_zone: Box<CardContainer>,
 }
 
 impl BoardState {
@@ -29,7 +32,7 @@ impl BoardState {
     }
     */
 
-     fn play_card(&mut self, card: usize) {
+    fn play_card(&mut self, card: usize) {
         if !(0..self.hand.cards.len()).contains(&card) {
             panic!("WTF? Playing card not in hand? I should play card #{:?} when my gameplay state is: {:?}", card, self);
         }
@@ -46,7 +49,7 @@ impl BoardState {
 
     pub fn draw_card(&mut self) -> bool {
         if self.hand.is_full() {
-            return false
+            return false;
         }
 
         match self.deck.draw() {
@@ -56,14 +59,15 @@ impl BoardState {
                     DrawTo::Hand => {
                         println!("Drawn card: {}", card.name);
                         self.hand.cards.push(card);
-                    },
+                    }
                     DrawTo::Kaiju => {
                         println!("Raaar! Kaiju came: {}", card.name);
                         self.kaiju_zone.add(card);
                     }
                 };
-                
-                true},
+
+                true
+            }
         }
     }
 
@@ -94,7 +98,7 @@ impl BoardState {
         for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_end) {
             self.evaluate_effect(&effect, card)
         }
-        
+
         self.globals.reset_all();
 
         // increase turn counter
@@ -103,11 +107,11 @@ impl BoardState {
 
     pub fn evaluate_effect(&mut self, effect: &Effect, card: Card) {
         match effect {
-            Effect::Echo{msg} => println!("  {}", msg),
-            Effect::Global{key, val} => self.globals.add(*key, *val),
+            Effect::Echo { msg } => println!("  {}", msg),
+            Effect::Global { key, val } => self.globals.add(*key, *val),
             Effect::None => println!("  It does nothing"),
-            Effect::Return => { self.deck.add(card) },
-            Effect::ToBuildings => { self.buildings.add(card) },
+            Effect::Return => { self.deck.add(card) }
+            Effect::ToBuildings => { self.buildings.add(card) }
             Effect::Break => {
                 if self.buildings.cards.len() > 0 {
                     self.buildings.cards.remove(0);
@@ -125,7 +129,7 @@ impl BoardState {
     pub fn update_availability(&mut self) {
         for store in self.stores.iter_mut() {
             for card in store.menu.cards.iter_mut() {
-                card.available = self.globals.can_afford(&card.cost);    
+                card.available = self.globals.can_afford(&card.cost);
             }
         }
 
@@ -135,7 +139,6 @@ impl BoardState {
             }
         }
     }
-
 }
 
 // impl Default for BoardState {
@@ -145,20 +148,15 @@ impl BoardState {
 //     }
 // }
 
-#[derive(Debug, Default)]
-pub struct GameplayState {
-    board: BoardState
-}
-
 impl GameplayState {
-    pub fn new(mut board: BoardState) -> Self {
+    pub fn new(mut board: BoardState, assets: Assets) -> Self {
         board.begin_turn();
         println!("Created a new board: {:?}", board);
-        Self { board }
+        Self { board, assets }
     }
 
-    pub fn new_with_ui(mut board: BoardState) -> Box<TakeTurnState> {
-        let mut gameplay_state = Box::new(Self::new(board));
+    pub fn new_with_ui(mut board: BoardState, assets: Assets) -> Box<TakeTurnState> {
+        let mut gameplay_state = Box::new(Self::new(board, assets));
         println!("Wrapping this gameplay state: {:?}", gameplay_state);
         gameplay_state.take_turn()
     }
@@ -167,11 +165,21 @@ impl GameplayState {
         &self.board
     }
 
+    pub fn get_assets(&self) -> &Assets {
+        &self.assets
+    }
+
     // Performs all operations needed before switching to TakeTurnState
     fn take_turn(&mut self) -> Box<TakeTurnState> {
         self.board.update_availability();
         TakeTurnState::new(Box::new(take(self)))
     }
+}
+
+#[derive(Debug, Default)]
+pub struct GameplayState {
+    board: BoardState,
+    assets: Assets,
 }
 
 impl AutomatonState for GameplayState {
@@ -182,7 +190,7 @@ impl AutomatonState for GameplayState {
             GameEvent::CardPicked(card) => {
                 self.board.play_card(card);
                 self.take_turn()
-            } 
+            }
             //GameEvent::CardTargeted => (StateAction::None, None),
             GameEvent::CardBought(zone, card_idx) => {
 
@@ -202,15 +210,15 @@ impl AutomatonState for GameplayState {
                 } else {
                     println!("Cannot buy, relevant global value too low (i.e. you do not have enough cash)")
                 }
-                
+
                 self.take_turn()
             }
             GameEvent::EndTurn => {
                 self.board.end_turn();
                 self.board.begin_turn();
                 self.take_turn()
-            },
-            GameEvent::GameEnded => Box::new(GameEndedState{}),
+            }
+            GameEvent::GameEnded => Box::new(GameEndedState {}),
             _ => {
                 panic!("This state can't handle event {:?}", event)
             }

@@ -3,41 +3,41 @@
       "build": {"name": "Construction", "on_play": [
           {"effect": "Echo", "msg": "Diggers ahoy!" },
           {"effect": "Global", "key": "Build", "val": 2 }
-      ], "cost": {"count": 1, "currency": "Build"}},
+      ], "cost": {"count": 1, "currency": "Build"}, "image": "kaiju.png"},
 
       "build2": {"name": "Greater Construction", "on_play": [
           {"effect": "Echo", "msg": "Sim city!" },
           {"effect": "Global", "key": "Build", "val": 2 }
-        ], "cost": {"count": 2, "currency": "Build"}},
+        ], "cost": {"count": 2, "currency": "Build"}, "image": "kaiju.png"},
 
       "house": {"name": "House", "on_play": [
         {"effect": "ToBuildings"}
-      ], "cost": {"count": 1, "currency": "Build"}},
+      ], "cost": {"count": 1, "currency": "Build"}, "image": "kaiju.png"},
 
       "wall": {"name": "Warding Wall", "on_play": [
           {"effect": "Echo", "msg": "We buld this wall and build it strong, they'll be here before long" },
           {"effect": "ToBuildings" }
-        ], "cost": {"count": 3, "currency": "Build"}},
+        ], "cost": {"count": 3, "currency": "Build"}, "image": "kaiju.png"},
 
       "tank": {"name": "Tanks", "on_play": [
           {"effect": "Echo", "msg": "Boom! Boom!" },
           {"effect": "Global", "key": "Attack", "val": 1 }
-        ], "cost": {"count": 2, "currency": "Build"}},
+        ], "cost": {"count": 2, "currency": "Build"}, "image": "kaiju.png"},
 
       "kaiju": {"name": "Regular kaiju", "on_strike": [
           {"effect": "Echo", "msg": "I see a bad moon rising" },
           {"effect": "Break"}
-        ], "cost": {"count": 1, "currency": "Evil"}, "draw_to": "Kaiju"},
-        
+        ], "cost": {"count": 1, "currency": "Evil"}, "draw_to": "Kaiju", "image": "kaiju.png"},
+
       "daikaiju": {"name": "MAGMA KRAKEN!", "on_strike": [
           {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
           {"effect": "Break"},
           {"effect": "Break"},
           {"effect": "Break"}
-        ], "cost": {"count": 3, "currency": "Evil"}, "draw_to": "Kaiju"},
+        ], "cost": {"count": 3, "currency": "Evil"}, "draw_to": "Kaiju", "image": "kaiju.png"},
       "googles": {"name": "Googles", "on_play": [
           {"effect": "None"}
-        ], "cost": {"count": 1, "currency": "Evil"}}
+        ], "cost": {"count": 1, "currency": "Evil"}, "image": "kaiju2.png"}
   },
 
   "starter_deck": {

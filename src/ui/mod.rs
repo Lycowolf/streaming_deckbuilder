@@ -17,34 +17,7 @@ use crate::loading::load_board;
 pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
-const FONT_FILE: &'static str = "Teko-Regular.ttf";
-
-#[derive(Debug, Default)]
-pub struct LoadingState {
-    board_state: BoardState,
-}
-
-impl LoadingState {
-    pub fn new() -> Box<Self> {
-        Box::new(Self {
-            board_state: load_board("cards.json"),
-        })
-    }
-}
-
-impl AutomatonState for LoadingState {
-    fn event(&mut self, event: GameEvent) -> Box<dyn AutomatonState> {
-        Box::new(take(self))
-    }
-
-    fn update(&mut self) -> Box<dyn AutomatonState> {
-        GameplayState::new_with_ui(take(self).board_state) // TODO async load
-    }
-
-    fn draw(&self, window: &mut Window) -> () {
-        window.draw(&Circle::new((300, 300), 32), Col(Color::BLUE));
-    }
-}
+const BASE_Z_INDEX: f32 = 1.0; // widgets will be layered starting with this Z
 
 // TODO: cache widgets?
 #[derive(Derivative)]
@@ -52,21 +25,20 @@ impl AutomatonState for LoadingState {
 pub struct TakeTurnState {
     gameplay_state: Box<GameplayState>,
     widgets: Vec<Box<dyn Widget>>,
-    #[derivative(Debug = "ignore")]
-    font: Font,
 }
 
 // TODO: load fonts in LoadingState
 impl TakeTurnState {
     pub fn new(gameplay_state: Box<GameplayState>) -> Box<Self> {
-        let font = Font::load(FONT_FILE).wait().expect("Can't load font file");
+        let assets = gameplay_state.get_assets();
         let mut widgets = Vec::new();
 
         // Next turn button
         widgets.push(Box::new(Button::new(
             "End\nturn".to_string(),
             Vector::new(UI_UNIT * 7.0, UI_UNIT * 45.0),
-            &font,
+            BASE_Z_INDEX,
+            &assets,
             Some(GameEvent::EndTurn),
         ),
         ) as Box<dyn Widget>);
@@ -74,8 +46,9 @@ impl TakeTurnState {
         // Hand
         let hand_zone = CardZone::<CardFull>::from_container(&gameplay_state.get_board().hand,
                                                              Vector::new(13.0 * UI_UNIT, 35.0 * UI_UNIT),
-                                                             ZoneDirection::Horizontal, 
-                                                             &font,
+                                                             ZoneDirection::Horizontal,
+                                                             BASE_Z_INDEX,
+                                                             &assets,
                                                              |idx, card, name| Some(GameEvent::CardPicked(idx)));
         widgets.push(Box::new(hand_zone));
 
@@ -87,7 +60,8 @@ impl TakeTurnState {
             let shop_zone = CardZone::<CardIcon>::from_container(&store.menu,
                                                                  base_store_position + Vector::new(0, UI_UNIT * 4.0 * num as f32), // 4U widget height + 1U padding + 1U gap
                                                                  ZoneDirection::Horizontal,
-                                                                 &font,
+                                                                 BASE_Z_INDEX,
+                                                                 &assets,
                                                                  |idx, card, name| Some(GameEvent::CardBought(name, idx)));
             widgets.push(Box::new(shop_zone));
         }
@@ -98,7 +72,8 @@ impl TakeTurnState {
         let build_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().buildings,
                                                               base_playzone_position,
                                                               ZoneDirection::Vertical,
-                                                              &font,
+                                                              BASE_Z_INDEX,
+                                                              &assets,
                                                               |idx, card, name| None);
         widgets.push(Box::new(build_zone));
 
@@ -107,26 +82,27 @@ impl TakeTurnState {
         let kaiju_zone = CardZone::<CardIcon>::from_container(&gameplay_state.get_board().kaiju_zone,
                                                               kaiju_position,
                                                               ZoneDirection::Vertical,
-                                                              &font,
+                                                              BASE_Z_INDEX,
+                                                              &assets,
                                                               |idx, card, zone_id| None);
         widgets.push(Box::new(kaiju_zone));
 
-        let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 15.0 * UI_UNIT);
+        let base_numbers_position = Vector::new(4.0 * UI_UNIT, PLAYER_BOARD_FROM_TOP + 12.0 * UI_UNIT);
 
         for (num, currency) in Globals::in_game().iter().enumerate() {
             let value = gameplay_state.get_board().globals.get(*currency);
             widgets.push(Box::new(Button::new(
                 format!("{:?}\n {}", currency, value),
                 base_numbers_position + Vector::new(UI_UNIT * 5.0, 0) * num as f32,
-                &font,
-                None
+                BASE_Z_INDEX,
+                &assets,
+                None,
             )));
         }
 
         Box::new(Self {
             gameplay_state,
             widgets,
-            font,
         })
     }
 }
@@ -137,7 +113,6 @@ impl Default for TakeTurnState {
         Self {
             gameplay_state: Box::new(GameplayState::default()),
             widgets: Vec::new(),
-            font: Font::load(FONT_FILE).wait().expect("Can't load font file"), // TODO: use preloaded font (or make it optional)
         }
     }
 }
