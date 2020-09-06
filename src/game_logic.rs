@@ -53,6 +53,7 @@ impl BoardState {
 
         match played.target_effect {
             TargetEffect::None => { print!("*Sad trombone*"); },
+            TargetEffect::Stun => { target_container.get(card_idx).stunned = true; }
             TargetEffect::Kill => { target_container.remove(target_idx); },
             TargetEffect::Bounce => {
                 if let Some(target) = target_container.remove(target_idx) {
@@ -79,8 +80,15 @@ impl BoardState {
     pub fn begin_turn(&mut self) {
         println!("Starting turn {}", self.turn);
 
+        //for zone in [self.hand, self.kaiju_zone, self.buildings, self.store_fixed, self.store_trade]:
+        // 
+        for mut card in self.kaiju_zone.cards.clone() {
+            card.reset()
+        }
+
+
         // process on_begin
-        for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_begin) {
+        for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_start) {
             self.evaluate_effect(&effect, card)
         }
 
@@ -97,7 +105,9 @@ impl BoardState {
         println!();
 
         for (_, card, effect) in self.kaiju_zone.all_effects(|c| &c.on_strike) {
-            self.evaluate_effect(&effect, card)
+            if !card.stunned {
+                self.evaluate_effect(&effect, card)
+            }
         }
 
         for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_end) {
@@ -112,16 +122,23 @@ impl BoardState {
 
     pub fn evaluate_effect(&mut self, effect: &Effect, card: Card) {
         match effect {
-            Effect::Echo { msg } => println!("  {}", msg),
-            Effect::Global { key, val } => self.globals.add(*key, *val),
-            Effect::None => println!("  It does nothing"),
-            Effect::Return => { self.deck.add(card) }
-            Effect::ToBuildings => { self.buildings.add(card) }
             Effect::Break => {
-                if self.buildings.cards.len() > 0 {
-                    self.buildings.cards.remove(0);
-                }
-            }
+                let cost = Cost{currency: Globals::Block, count: 1};
+                if self.globals.can_pay(&cost) {
+                    self.globals.pay(&cost)
+                } else if self.buildings.cards.len() > 0 {
+                    self.buildings.remove(0);
+                }},
+            Effect::BreakEverything => {
+                while !self.buildings.empty() {
+                    self.buildings.remove(0);
+                }},
+            Effect::BreakUnblockable => {self.buildings.remove(0);},
+            Effect::Echo{msg} => println!("  {}", msg),
+            Effect::Global{key, val} => self.globals.add(*key, *val),
+            Effect::None => println!("  It does nothing"),
+            Effect::Return => { self.deck.add(card) },
+            Effect::ToBuildings => { self.buildings.add(card) },
         }
     }
 
@@ -216,6 +233,27 @@ impl AutomatonState for GameplayState {
 
         match event {
             GameEvent::CardPicked(card_idx) => {
+
+                // interception
+                let tags = self.board.hand.cards[card_idx].tags.clone();
+                let interference = self.board.kaiju_zone.cards.iter_mut()
+                    .filter_map(|k| if !k.stunned &&
+                                       k.intercepts_left > 0 &&
+                                       tags.contains(&k.intercept?.tag) {
+                                            Some(k)
+                                        } else {
+                                            None
+                                        })
+                    .next();
+                
+                if let Some(mut annoyance) = interference {
+                    annoyance.intercepts_left -= 1;
+                    self.board.hand.remove(card_idx);
+
+                    return TakeTurnState::new(Box::new(take(self)))
+                }
+
+                // play the card
                 let card_target = self.board.hand.cards[card_idx].target_zone;
                 match card_target {
                     BoardZone::None => {
@@ -225,19 +263,15 @@ impl AutomatonState for GameplayState {
                     _ => {
                         TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target)
                     }
-                    
                 }
             }, 
             GameEvent::CardTargeted(card_zone, card_idx, target_zone, target_idx) => {
-                match target_zone {
-                    BoardZone::None => TakeTurnState::new(Box::new(take(self))),  // No target,  nothing happens
-                    _ => {
-                        
-                        self.board.play_card_on_target(card_idx, target_zone, target_idx);
-                        TakeTurnState::new(Box::new(take(self)))
-                    }
-                }
+                if target_zone != BoardZone::None {
+                    self.board.play_card_on_target(card_idx, target_zone, target_idx);
+                };
+                TakeTurnState::new(Box::new(take(self)))
             },
+
             GameEvent::CardBought(zone, card_idx) => {
 
                 // TODO extract as method to GameBoard? I may want to use it in computing is_available, too

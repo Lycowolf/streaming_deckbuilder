@@ -18,6 +18,7 @@ pub const WINDOW_SIZE_W: f32 = 1280.0;
 pub const WINDOW_SIZE_H: f32 = 800.0;
 const PLAYER_BOARD_FROM_TOP: f32 = 300.0;
 const BASE_Z_INDEX: f32 = 1.0; // widgets will be layered starting with this Z
+const FONT_FILE: &'static str = "Teko-Regular.ttf";
 
 // TODO: cache widgets?
 #[derive(Derivative)]

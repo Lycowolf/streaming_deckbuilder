@@ -97,7 +97,7 @@ fn container_counts(zone: BoardZone, json: &serde_json::value::Value, node: &str
 }
 
 pub fn load_board(json: serde_json::Value) -> BoardState {
-    let deck_node_name = "test_deck";
+    let deck_node_name = "starter_deck";
     let buildings_node = "starter_buildings";
     let store_node = "build_store";
     let trade_row = "kaiju_store";
