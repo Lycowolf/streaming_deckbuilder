@@ -182,7 +182,7 @@ impl LoadingState {
     pub fn new() -> Box<Self> {
         let font_names = vec![CARD_TITLE_FONT.to_string()];
 
-        let file = load_file("cards.json")
+        let file = load_file("cards_expanded.json")
             .wait()
             .expect("file should open read only"); // TODO: do this asynchronously, too
         let json: serde_json::Value = serde_json::from_slice(file.as_slice())

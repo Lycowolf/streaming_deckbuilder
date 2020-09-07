@@ -94,7 +94,8 @@
                     "flavor": "A kaiju-antikaiju pair will anihilate on contact, generating monster pieces instead of energy",
                     "target_zone": "Kaiju", "target_effect": "Kill",
                     "on_play": [{"effect": "Break"}],
-                    "cost": {"count": 4, "currency": "Evil"}},
+                    "cost": {"count": 4, "currency": "Evil"},
+                    "image": "kaiju2.png"},
   
       "spawn": {"name": "Kaijuling",
                 "flavor": "Immature kaju. Can do some damage, but gets tired easily.",
@@ -113,7 +114,8 @@
                    "on_strike": [{"effect": "Break"}],
                    "intercept": {"tag": "Military", "times": 1},
                    "cost": {"count": 2, "currency": "Evil"},
-                   "draw_to": "Kaiju"},
+                   "draw_to": "Kaiju",
+                   "image": "kaiju.png"},
       "kraken": {"name": "MAGMA KRAKEN!", "on_strike": [
                     {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
                     {"effect": "Break"},

@@ -138,6 +138,7 @@ pub struct Card {
     pub target_zone: BoardZone,
     pub target_effect: TargetEffect,
 
+    #[serde(default = "no_image")]
     pub image: String,
 
     #[serde(default = "BoardZone::default_draw")]
@@ -151,6 +152,10 @@ pub struct Card {
     pub stunned: bool,
     #[serde(skip)]
     pub intercepts_left: u8,
+}
+
+fn no_image() -> String {
+    "none.png".to_string()
 }
 
 impl Card {
