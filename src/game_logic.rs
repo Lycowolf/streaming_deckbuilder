@@ -142,17 +142,6 @@ impl BoardState {
         }
     }
 
-    pub fn evaluate_targeted_effect(&mut self, effect: &TargetEffect, target_container: &mut CardContainer, target_idx: usize) {
-        match effect {
-            TargetEffect::Kill => { target_container.cards.remove(target_idx); },
-            TargetEffect::Bounce => {
-                let target = target_container.cards.remove(target_idx);
-                self.deck.add(target);
-            },
-            _ => ()
-        }
-    }
-
     pub fn store_by_zone(&mut self, zone: BoardZone) -> &mut Store {
         self.stores.iter_mut()
             .find(|s| s.menu.zone == zone)
