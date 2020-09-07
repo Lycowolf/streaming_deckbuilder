@@ -124,7 +124,7 @@ impl BoardState {
         match effect {
             Effect::Break => {
                 let cost = Cost{currency: Globals::Block, count: 1};
-                if self.globals.can_pay(&cost) {
+                if self.globals.can_afford(&cost) {
                     self.globals.pay(&cost)
                 } else if self.buildings.cards.len() > 0 {
                     self.buildings.remove(0);

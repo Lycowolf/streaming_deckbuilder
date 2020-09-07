@@ -279,11 +279,6 @@ impl NumberMap {
         *val += change;
     }
 
-    pub fn can_pay(&self, cost: &Cost) -> bool {
-        let val = self.get(cost.currency);
-        val >= cost.count
-    }
-
     pub fn pay(&mut self, cost: &Cost) {
         let val = self.changed.entry(cost.currency.clone()).or_insert(0);
         *val -= cost.count;
