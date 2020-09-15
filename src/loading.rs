@@ -6,7 +6,8 @@ use std::collections::VecDeque;
 use std::collections::HashMap;
 use itertools::Itertools;
 use std::iter;
-use crate::game_logic::{BoardState, GameplayState};
+use crate::game_logic::{BoardState};
+use crate::game_control::*;
 use crate::game_objects::*;
 use crate::automaton::{AutomatonState, GameEvent};
 use std::mem::take;
@@ -48,7 +49,9 @@ fn parse_deck(json: &serde_json::value::Value, node_name: &str, card_factory: &C
     let data: HashMap<String, usize> = serde_json::from_value(deck_node)
         .expect("Malformed deck list");
 
-    Deck::from(cards_by_counts(card_factory, data))
+    let mut deck = Deck::from(cards_by_counts(card_factory, data));
+    deck.shuffle();
+    deck
 }
 
 fn parse_store(zone: BoardZone, json: &serde_json::value::Value, node: &str, factory: &CardFactory) -> Store {
@@ -96,38 +99,54 @@ fn container_counts(zone: BoardZone, json: &serde_json::value::Value, node: &str
     }
 }
 
-pub fn load_board(json: serde_json::Value) -> BoardState {
-    let deck_node_name = "starter_deck";
-    let buildings_node = "starter_buildings";
+pub fn load_players(json: &serde_json::Value) -> Vec<Player> {
+    let player_node = json.get("players")
+        .expect("file should have \"players\" node.")
+        .clone();
+    
+    let mut players: Vec<Player> = serde_json::from_value(player_node)
+        .expect("Malformed player node");
+
+    let game_type = json.get("game_type")
+        .expect("game type not specified")
+        .as_str()
+        .expect("game type not string");
+    
+    match game_type.to_lowercase().as_str() {
+        "vs" => {
+            assert_eq!(players.len(), 2, "For VS game, only 2 players are possible");
+            players[0].opponent_idx = 1;
+            players[1].opponent_idx = 0;
+        },
+        _ => panic!("Unknown game type")
+    }
+
+    players
+}
+
+pub fn load_board(json: &serde_json::Value, card_factory: &CardFactory, player: Player) -> BoardState {
     let store_node = "build_store";
     let trade_row = "kaiju_store";
     let hand_size = 5;
 
-    let card_node = {
-        json.get("cards")
-            .expect("file should have \"cards\" node")
-            .clone()
-    };
-    let factory: CardFactory = serde_json::from_value(card_node)
-        .expect("Malformed card list");
-
-    let draw_deck = parse_deck(&json, deck_node_name, &factory);
+    let draw_deck = parse_deck(&json, &player.starting_deck, card_factory);
 
     //let bs_node = { json.get("build_store").expect("build_store node not found").clone() };
-    let build_store = parse_store(BoardZone::BuildStore, &json, store_node, &factory);
+    let build_store = parse_store(BoardZone::BuildStore, &json, store_node, card_factory);
 
     //let ks_node = { json.get("kaiju_store").expect("kaiju_store node not found").clone() };
-    let kaiju_store = parse_store(BoardZone::KaijuStore, &json, trade_row, &factory);
+    let kaiju_store = parse_store(BoardZone::KaijuStore, &json, trade_row, card_factory);
 
     let hand = CardContainer::new_sized(BoardZone::Hand, hand_size);
 
-    let buildings = container_counts(BoardZone::Buildings, &json, buildings_node, &factory);
+    let buildings = container_counts(BoardZone::Buildings, &json, &player.starting_buildings, card_factory);
 
     let kaiju = CardContainer::new(BoardZone::Kaiju);
 
     println!("Loading done");
 
     BoardState {
+        player: player,
         turn: 1,
         hand: Box::new(hand),
         deck: Box::new(draw_deck),
@@ -161,7 +180,7 @@ pub fn load_board(json: serde_json::Value) -> BoardState {
 #[derive(Derivative, Default)]
 #[derivative(Debug)]
 pub struct LoadingState {
-    board_state: BoardState,
+    board_states: Vec<BoardState>,
     image_names: Vec<String>,
     font_names: Vec<String>,
     #[derivative(Debug = "ignore")]
@@ -211,10 +230,15 @@ impl LoadingState {
             )
         );
 
-        let board_state = load_board(json);
+        let players = load_players(&json);
+        let board_states = players.iter()
+            .map(|p| load_board(&json, &cards, p.clone()))
+            .collect();
+
+        //let board_state = load_board(json);
 
         Box::new(Self {
-            board_state,
+            board_states,
             image_names,
             font_names,
             loading: Some(loading_images),
@@ -242,13 +266,14 @@ impl AutomatonState for LoadingState {
                     loaded_images.insert(k, Rc::new(v));
                 }
 
-                GameplayState::new_with_ui(
-                    take(self).board_state,
+                let mut control_state = Box::new(GameControlState::new(
+                    self.board_states.clone(),
                     Assets {
                         fonts: loaded_fonts,
                         images: loaded_images,
                     },
-                ) // TODO async load board
+                )); // TODO async load board
+                control_state.overtake()
             }
             Ok(Async::NotReady) => {
                 Box::new(take(self))

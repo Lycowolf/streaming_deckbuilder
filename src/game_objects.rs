@@ -1,6 +1,8 @@
 extern crate quicksilver;
 extern crate json;
 
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 use quicksilver::prelude::*;
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -133,11 +135,10 @@ pub struct Card {
     pub on_strike: Vec<Effect>,
     //pub on_defend: Vec<Effect>,
     pub cost: Cost,
-    pub available: bool,    
-
     pub target_zone: BoardZone,
     pub target_effect: TargetEffect,
-
+    pub give_to_enemy: bool,
+    
     #[serde(default = "no_image")]
     pub image: String,
 
@@ -152,6 +153,8 @@ pub struct Card {
     pub stunned: bool,
     #[serde(skip)]
     pub intercepts_left: u8,
+    #[serde(skip)]
+    pub available: bool,    
 }
 
 fn no_image() -> String {
@@ -250,9 +253,11 @@ impl Deck {
         self.cards.push_back(new_card)
     }
 
-    pub fn shuffle(&self) {
-        unimplemented!
-        ()
+    pub fn shuffle(&mut self) {
+        let mut card_pile: Vec<Card> = self.cards.drain(..).collect();
+        card_pile.shuffle(&mut thread_rng());
+        self.cards.clear();
+        self.cards.extend(card_pile);
     }
 }
 
