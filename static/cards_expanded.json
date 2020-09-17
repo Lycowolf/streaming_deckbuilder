@@ -101,20 +101,25 @@
                 "flavor": "Immature kaju. Can do some damage, but gets tired easily.",
                 "on_strike": [{"effect": "Break"}, {"effect": "Return"}],
                 "cost": {"count": 1, "currency": "Evil"},
-                "draw_to": "Kaiju"},
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
+              },
       "hornet": {"name": "Acid Hornet",
                   "flavor": "Full of acid and anger. Mostly anger.",
                   "on_strike": [{"effect": "Break"}],
                   "intercept": {"tag": "Military", "times": 1},
                   "cost": {"count": 1, "currency": "Evil"},
                   "tags":["Air"],
-                  "draw_to": "Kaiju"},
+                  "draw_to": "Kaiju",
+                  "give_to_enemy": true
+                },
       "godzilla": {"name": "Godzilla",
                    "flavor": "Big lizard with nuclear breath. Clasic.",
                    "on_strike": [{"effect": "Break"}],
                    "intercept": {"tag": "Military", "times": 1},
                    "cost": {"count": 2, "currency": "Evil"},
                    "draw_to": "Kaiju",
+                   "give_to_enemy": true,
                    "image": "kaiju.png"},
       "kraken": {"name": "MAGMA KRAKEN!", "on_strike": [
                     {"effect": "Echo", "msg": "In Soviet Rusia, with fire it kills you" },
@@ -123,12 +128,15 @@
                     {"effect": "Break"}
                   ],
                 "cost": {"count": 6, "currency": "Evil"},
-                "draw_to": "Kaiju"},
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
+              },
       "hungry": {"name": "Truck Eater",
                   "flavor": "Huge frog. Eats construction equipment and everything else.",
                   "intercept": {"tag": "Economy", "times": 2},
                   "cost": {"count": 2, "currency": "Evil"},
-                  "draw_to": "Kaiju"
+                  "draw_to": "Kaiju",
+                  "give_to_enemy": true
                   },
       "shark": {"name": "Giant shark",
                 "flavor": "The most badass predator of all time, nemesis to the giant octopus.",
@@ -136,30 +144,37 @@
                 "intercept": {"tag": "Sea", "times": 3},
                 "cost": {"count": 2, "currency": "Evil"},
                 "tags": ["Sea"],
-                "draw_to": "Kaiju"
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
                 },
       "lazy": {"name": "Ruminant Sloth",
                 "flavor": "Giant sloth. Harmless, but is a major obstruction.",
                 "on_turn_start": [{"effect": "Global", "key": "Build", "val": -3}],
                 "cost": {"count": 2, "currency": "Evil"},
-                "draw_to": "Kaiju"
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
                 },
       "queen": {"name": "Queen",
                 "flavor": "Godzilla with young. When laying eggs, does not use atomic breath.",
                 "on_strike": [{"effect": "Break"}],
                 "cost": {"count": 4, "currency": "Evil"},
-                "draw_to": "Kaiju"
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
                 },
       "digger": {"name": "Ground drake",
                 "flavor": "Young tunelling lizard. Breaks stuff and not afraid of walls. Annoying.",
                 "on_strike": [{"effect": "BreakUnblockable"}],
                 "cost": {"count": 4, "currency": "Evil"},
-                "draw_to": "Kaiju"},
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
+              },
       "king": {"name": "Apocalypse drake",
                 "flavor": "Adult drake. Eats cities instead of buildings. Sign of the end times.",
                 "on_strike": [{"effect": "BreakEverything"}],
                 "cost": {"count": 15, "currency": "Evil"},
-                "draw_to": "Kaiju"},
+                "draw_to": "Kaiju",
+                "give_to_enemy": true
+              },
       "egg": {"name": "Monster egg",
               "flavor": "Hatches into something badder",
               "on_play": [{"effect": "Global", "key": "Evil", "val": 3 }],
