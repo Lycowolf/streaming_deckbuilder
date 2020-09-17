@@ -23,6 +23,8 @@ pub enum Effect {
     Return,
     ToBuildings,
     Break,
+    BreakUnblockable,
+    BreakEverything,
     None,
 }
 
@@ -31,6 +33,7 @@ pub enum TargetEffect {
     None,
     Kill,
     Bounce,
+    Stun
 }
 
 impl Default for TargetEffect {
@@ -53,14 +56,14 @@ impl Default for DrawTo {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum Globals {
-    Attack,
     Build,
-    Evil
+    Evil,
+    Block
 }
 
 impl Globals {
     pub fn in_game() -> Vec<Self> {
-        vec!(Globals::Build, Globals::Attack, Globals::Evil)
+        vec!(Globals::Build, Globals::Evil, Globals::Block)
     }
 }
 
@@ -73,8 +76,8 @@ impl fmt::Display for Globals {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cost {
-    count: i16,
-    currency: Globals
+    pub count: i16,
+    pub currency: Globals
 }
 
 impl Default for Cost {
@@ -105,25 +108,61 @@ impl Default for BoardZone {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Tag {
+    Sea,
+    Air,
+    Economy,
+    Military
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Intercept {
+    pub tag: Tag,
+    pub times: u8
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Card {
     pub name: String,
+    pub flavor: String,
     pub on_play: Vec<Effect>,
-    pub on_turn_begin: Vec<Effect>,
+    pub on_turn_start: Vec<Effect>,
     pub on_turn_end: Vec<Effect>,
     pub on_strike: Vec<Effect>,
-    pub on_defend: Vec<Effect>,
+    //pub on_defend: Vec<Effect>,
     pub cost: Cost,
     pub available: bool,    
 
     pub target_zone: BoardZone,
     pub target_effect: TargetEffect,
 
+    #[serde(default = "no_image")]
     pub image: String,
 
     #[serde(default = "BoardZone::default_draw")]
     pub draw_to: BoardZone,
+
+    pub tags: Vec<Tag>,
+
+    pub intercept: Option<Intercept>,
+
+    #[serde(skip)]
+    pub stunned: bool,
+    #[serde(skip)]
+    pub intercepts_left: u8,
+}
+
+fn no_image() -> String {
+    "none.png".to_string()
+}
+
+impl Card {
+    pub fn reset(&mut self) {
+        self.stunned = false;
+        self.intercepts_left = match &self.intercept {Some(i) => i.times, None => 0}
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
