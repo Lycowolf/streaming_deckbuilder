@@ -1,4 +1,10 @@
 {
+  "players": [
+    {"name": "Player 1", "starting_deck": "starter_deck", "starting_buildings": "starter_buildings",  "control": "Human"},
+    {"name": "Player 2", "starting_deck": "starter_deck", "starting_buildings": "starter_buildings",  "control": "Human"}
+  ],
+  "game_type": "Vs",
+
   "cards": {
       "build": {"name": "Truck convoy",
                 "flavor": "Materials on the move",
@@ -77,12 +83,10 @@
               "cost": {"count": 2, "currency": "Build"}},
       "evil1": {"name": "Kaiju season",
                 "flavor": "Kaiju appear periodically without provocation",
-                "target_zone": "Kaiju", "target_effect": "Kill",
                 "on_play": [{"effect": "Global", "key": "Evil", "val": 1}, {"effect": "Return"}],
                 "cost": {"count": 0, "currency": "Build"}},
       "evil2": {"name": "Experiments",
                   "flavor": "But we provoke them anyway",
-                  "target_zone": "Kaiju", "target_effect": "Kill",
                   "on_play": [{"effect": "Global", "key": "Evil", "val": 1}],
                   "cost": {"count": 4, "currency": "Build"}},
       "evilbomb": {"name": "Kaiju bomb",
