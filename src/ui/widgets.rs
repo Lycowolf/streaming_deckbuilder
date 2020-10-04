@@ -5,6 +5,7 @@ use crate::automaton::*;
 use crate::game_objects::*;
 use crate::loading::CARD_TITLE_FONT;
 use crate::loading::Assets;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 // should be even: we often use half of the unit (centering etc.) and half-pixels break the text antialiasing
@@ -14,6 +15,8 @@ pub const PAD_SIZE: f32 = UI_UNIT;
 const TITLE_OFFSET: (f32, f32) = (5.0, 5.0); // card background image does not cover whole rectangle
 
 const MAX_Z_PER_WIDGET: f32 = 10.0; // when nesting widgets, child widgets will be offset by this much in Z direction
+
+pub type CardHandler = Box<dyn Fn(usize, &Card, BoardZone) -> Option<GameEvent>>;
 
 pub trait Widget: std::fmt::Debug {
     fn bounding_box(&self) -> Rectangle;
@@ -59,11 +62,14 @@ impl<W> CardZone<W> where W: CardWidget {
         }
     }
 
-    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, z_index: f32, assets: &Assets, on_action: fn(usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, z_index: f32, assets: &Assets, handlers: &HashMap<BoardZone, CardHandler>) -> Self {
         let mut zone = CardZone::new(container.zone, top_left, direction, z_index);
 
         for (idx, card) in container.cards.iter().enumerate() {
-            let action = on_action(idx, &card, zone.zone_id);
+            let action = match handlers.get(&zone.zone_id) {
+                Some(handler) => handler(idx, &card, zone.zone_id),
+                None => None
+            };
             zone.add(card.clone(), assets, action);
         }
 
