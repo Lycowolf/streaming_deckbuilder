@@ -26,6 +26,7 @@ pub struct BoardState {
     pub buildings: Box<CardContainer>,
     // FIXME: make this a vector, or a type that can be iterated
     pub kaiju_zone: Box<CardContainer>,
+    pub ai: Option<Box<AI>>
 }
 
 impl BoardState {
@@ -232,12 +233,12 @@ impl GameplayState {
     fn take_turn(&mut self) -> Box<dyn AutomatonState> {
         self.get_board_mut().update_availability();
 
-        let ai = AI::new();
-
         match self.get_board().player.control {
             PlayerControl::Human => TakeTurnState::new(Box::new(take(self))),
             PlayerControl::AI => {
-                let intent = ai.select_card(self.get_board());
+                let board = self.get_board();
+                let ai = board.ai.as_ref().expect("AI for AI player not loaded");
+                let intent = ai.select_card(board);
                 self.event(intent)
             } 
         }
@@ -285,8 +286,9 @@ impl AutomatonState for GameplayState {
                         match self.get_board().player.control {
                             PlayerControl::Human => TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target),
                             PlayerControl::AI => {
-                                let ai = AI::new();
-                                let intent = ai.target_card(self.get_board(), card_idx, card_target);
+                                let board = self.get_board_mut();
+                                let ai = board.ai.as_ref().expect("AI for AI player not loaded");
+                                let intent = ai.target_card(board, card_idx, card_target);
                                 self.event(intent)
                             } 
                         }

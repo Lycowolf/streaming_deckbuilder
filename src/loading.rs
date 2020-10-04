@@ -9,6 +9,7 @@ use std::iter;
 use crate::game_logic::{BoardState};
 use crate::game_control::*;
 use crate::game_objects::*;
+use crate::ai::AI;
 use crate::automaton::{AutomatonState, GameEvent};
 use std::mem::take;
 use futures::{Async};
@@ -143,6 +144,11 @@ pub fn load_board(json: &serde_json::Value, card_factory: &CardFactory, player: 
 
     let kaiju = CardContainer::new(BoardZone::Kaiju);
 
+    let ai = match player.control {
+        PlayerControl::Human => None,
+        PlayerControl::AI => Some(AI::new())
+    };
+
     println!("Loading done");
 
     BoardState {
@@ -154,6 +160,7 @@ pub fn load_board(json: &serde_json::Value, card_factory: &CardFactory, player: 
         stores: Box::new(vec!(build_store, kaiju_store)),
         buildings: Box::new(buildings),
         kaiju_zone: Box::new(kaiju),
+        ai: ai
     }
 }
 

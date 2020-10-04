@@ -1,7 +1,9 @@
 use crate::automaton::*;
 use crate::game_objects::*;
 use crate::game_logic::BoardState;
+use serde_derive::*;
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AI {
 
 }
@@ -11,12 +13,12 @@ impl AI {
         Box::new(Self{})
     }
 
-    pub fn select_card(self, board: &BoardState) -> GameEvent {
+    pub fn select_card(&self, board: &BoardState) -> GameEvent {
         GameEvent::CardPicked(0)
         //GameEvent::CardBought(0)
     } 
 
-    pub fn target_card(self, board: &BoardState, card_idx: usize, card_target: BoardZone) -> GameEvent {
+    pub fn target_card(&self, board: &BoardState, card_idx: usize, card_target: BoardZone) -> GameEvent {
         // TODO not to be used until card_targetting is merged. Then, fix this
 
         let target = board.kaiju_zone.cards.iter()
