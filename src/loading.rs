@@ -72,6 +72,7 @@ fn parse_store(zone: BoardZone, json: &serde_json::value::Value, node: &str, fac
 
         StoreType::Drafted { size, from_deck } => {
             let mut deck = parse_deck(json, &from_deck, factory);
+            deck.shuffle();
 
             let cards = (0..size).filter_map(|_| deck.draw()).collect();
 

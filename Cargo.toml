@@ -15,6 +15,7 @@ json = "*"
 itertools = "*"
 derivative = "1.0"
 futures = "= 0.1" # Use the same version as quicksilver (see comments for LoadingState)
+rand = "*"
 
 [dependencies.quicksilver]
 version = "= 0.3.20"
