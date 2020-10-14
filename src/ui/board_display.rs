@@ -29,7 +29,7 @@ impl BoardDisplay {
 
         // Next turn button
         widgets.push(Box::new(Button::new(
-            "End\nturn".to_string(),
+            format!("End turn\ndeck: {}", gameplay_state.get_board().deck.len()),
             Vector::new(UI_UNIT * 7.0, UI_UNIT * 45.0),
             BASE_Z_INDEX,
             &assets,

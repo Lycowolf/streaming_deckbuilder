@@ -258,6 +258,10 @@ impl Deck {
         self.cards.clear();
         self.cards.extend(card_pile);
     }
+
+    pub fn len(&self) -> usize {
+        self.cards.len()
+    }
 }
 
 impl From<Vec<Card>> for Deck {
