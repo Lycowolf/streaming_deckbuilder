@@ -1,6 +1,8 @@
 extern crate quicksilver;
 extern crate json;
 
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 use quicksilver::prelude::*;
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -250,9 +252,11 @@ impl Deck {
         self.cards.push_back(new_card)
     }
 
-    pub fn shuffle(&self) {
-        unimplemented!
-        ()
+    pub fn shuffle(&mut self) {
+        let mut card_pile: Vec<Card> = self.cards.drain(..).collect();
+        card_pile.shuffle(&mut thread_rng());
+        self.cards.clear();
+        self.cards.extend(card_pile);
     }
 }
 
