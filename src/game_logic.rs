@@ -239,7 +239,7 @@ impl AutomatonState for GameplayState {
                     annoyance.intercepts_left -= 1;
                     self.board.hand.remove(card_idx);
 
-                    return TakeTurnState::new(Box::new(take(self)))
+                    return self.take_turn()
                 }
 
                 // play the card
@@ -247,9 +247,10 @@ impl AutomatonState for GameplayState {
                 match card_target {
                     BoardZone::None => {
                         self.board.play_card(card_idx);
-                        TakeTurnState::new(Box::new(take(self)))
+                        self.take_turn()
                     },
                     _ => {
+                        self.board.update_availability();
                         TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target)
                     }
                 }
@@ -258,7 +259,7 @@ impl AutomatonState for GameplayState {
                 if target_zone != BoardZone::None {
                     self.board.play_card_on_target(card_idx, target_zone, target_idx);
                 };
-                TakeTurnState::new(Box::new(take(self)))
+                self.take_turn()
             },
 
             GameEvent::CardBought(zone, card_idx) => {

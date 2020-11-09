@@ -2,7 +2,6 @@ extern crate quicksilver;
 extern crate json;
 
 use quicksilver::prelude::*;
-use std::collections::VecDeque;
 use std::collections::HashMap;
 use itertools::Itertools;
 use std::iter;
@@ -234,12 +233,12 @@ impl AutomatonState for LoadingState {
             // We use draining iterators to take ownership
             Ok(Async::Ready((mut fonts, mut images))) => {
                 let mut loaded_fonts = HashMap::new();
-                for (k, v) in self.font_names.drain((..)).zip(fonts.drain((..))) {
+                for (k, v) in self.font_names.drain(..).zip(fonts.drain(..)) {
                     loaded_fonts.insert(k, Box::new(v));
                 }
 
                 let mut loaded_images = HashMap::new();
-                for (k, v) in self.image_names.drain((..)).zip(images.drain((..))) {
+                for (k, v) in self.image_names.drain(..).zip(images.drain(..)) {
                     loaded_images.insert(k, Rc::new(v));
                 }
 
