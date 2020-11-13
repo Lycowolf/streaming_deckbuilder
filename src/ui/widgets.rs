@@ -5,6 +5,7 @@ use crate::automaton::*;
 use crate::game_objects::*;
 use crate::loading::CARD_TITLE_FONT;
 use crate::loading::Assets;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 // should be even: we often use half of the unit (centering etc.) and half-pixels break the text antialiasing
@@ -14,6 +15,8 @@ pub const PAD_SIZE: f32 = UI_UNIT;
 const TITLE_OFFSET: (f32, f32) = (5.0, 5.0); // card background image does not cover whole rectangle
 
 const MAX_Z_PER_WIDGET: f32 = 10.0; // when nesting widgets, child widgets will be offset by this much in Z direction
+
+pub type CardHandler = Box<dyn Fn(usize, &Card, BoardZone) -> Option<GameEvent>>;
 
 pub trait Widget: std::fmt::Debug {
     fn bounding_box(&self) -> Rectangle;
@@ -59,11 +62,14 @@ impl<W> CardZone<W> where W: CardWidget {
         }
     }
 
-    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, z_index: f32, assets: &Assets, on_action: fn(usize, &Card, BoardZone) -> Option<GameEvent>) -> Self {
+    pub fn from_container(container: &CardContainer, top_left: Vector, direction: ZoneDirection, z_index: f32, assets: &Assets, handlers: &HashMap<BoardZone, CardHandler>) -> Self {
         let mut zone = CardZone::new(container.zone, top_left, direction, z_index);
 
         for (idx, card) in container.cards.iter().enumerate() {
-            let action = on_action(idx, &card, zone.zone_id);
+            let action = match handlers.get(&zone.zone_id) {
+                Some(handler) => handler(idx, &card, zone.zone_id),
+                None => None
+            };
             zone.add(card.clone(), assets, action);
         }
 
@@ -142,6 +148,23 @@ impl<W: CardWidget> Widget for CardZone<W> {
     }
 }
 
+fn border_color(hovered: bool, available: bool, handled: bool) -> Color {
+
+    if !handled {
+        return Color::from_rgba(100, 100, 100, 0.0) // transparent (inactive);
+    }
+    
+    if !available {
+        return Color::from_rgba(200, 100, 100, 1.0)
+    }
+
+    if hovered {
+        Color::from_rgba(100, 100, 100, 1.0)
+    } else {
+        Color::from_rgba(40, 100, 40, 1.0)
+    }
+}
+
 #[derive(Debug)]
 pub struct CardFull {
     card: Box<Card>,
@@ -193,19 +216,14 @@ impl Widget for CardFull {
     fn draw(&self, window: &mut Window) -> Result<()> {
         let position = self.area.pos;
 
-        if self.hovered {
-            let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
-            let border_position = position - (border_size - self.area.size) * 0.5;
-            let border_area = Rectangle::new(border_position, border_size);
+        let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
+        let border_position = position - (border_size - self.area.size) * 0.5;
+        let border_area = Rectangle::new(border_position, border_size);
 
-            let color = if self.card.available {
-                Color::from_rgba(100, 100, 100, 1.0)
-            } else {
-                Color::from_rgba(200, 100, 100, 1.0)
-            };
-
-            window.draw_ex(&border_area, Col(color), Transform::IDENTITY, self.z_index);
-        }
+        window.draw_ex(&border_area,
+            Col(border_color(self.hovered, self.card.available, self.on_action.is_some())),
+            Transform::IDENTITY,
+            self.z_index);
 
         let text_rect = self.title.area().translate(position).translate(TITLE_OFFSET);
         window.draw_ex(&self.area, Img(&self.background), Transform::IDENTITY, self.z_index + 1.0);
@@ -263,19 +281,14 @@ impl Widget for CardIcon {
     fn draw(&self, window: &mut Window) -> Result<()> {
         let position = self.area.pos;
 
-        if self.hovered {
-            let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
-            let border_position = position - (border_size - self.area.size) * 0.5;
-            let border_area = Rectangle::new(border_position, border_size);
+        let border_size = self.area.size + Vector::new(PAD_SIZE, PAD_SIZE);
+        let border_position = position - (border_size - self.area.size) * 0.5;
+        let border_area = Rectangle::new(border_position, border_size);
 
-            let color = if self.card.available {
-                Color::from_rgba(100, 100, 100, 1.0)
-            } else {
-                Color::from_rgba(200, 100, 100, 1.0)
-            };
-
-            window.draw_ex(&border_area, Col(color), Transform::IDENTITY, self.z_index);
-        }
+        window.draw_ex(&border_area,
+            Col(border_color(self.hovered, self.card.available, self.on_action.is_some())),
+            Transform::IDENTITY,
+            self.z_index);
 
         let text_rect = self.image.area().translate(position);
         window.draw_ex(&self.area, Col(Color::from_rgba(50, 50, 50, 1.0)), Transform::IDENTITY, self.z_index + 1.0);
