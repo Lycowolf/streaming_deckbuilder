@@ -1,4 +1,10 @@
 {
+  "players": [
+    {"name": "Player 1", "starting_deck": "starter_deck", "starting_buildings": "starter_buildings",  "control": "Human"},
+    {"name": "Player 2", "starting_deck": "starter_deck", "starting_buildings": "starter_buildings",  "control": "Human"}
+  ],
+  "game_type": "Vs",
+  
   "cards": {
       "build": {"name": "Construction", "on_play": [
           {"effect": "Echo", "msg": "Diggers ahoy!" },
@@ -33,7 +39,7 @@
           {"effect": "Break"},
           {"effect": "Break"},
           {"effect": "Break"}
-        ], "cost": {"count": 3, "currency": "Evil"}, "draw_to": "Kaiju", "image": "kaiju.png"},
+        ], "cost": {"count": 3, "currency": "Evil"}, "draw_to": "Kaiju", "give_to_enemy": true, "image": "kaiju.png"},
       "googles": {"name": "Googles", "on_play": [
           {"effect": "None"}
         ], "cost": {"count": 1, "currency": "Evil"}, "image": "kaiju2.png"}

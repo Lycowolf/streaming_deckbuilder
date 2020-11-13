@@ -27,6 +27,24 @@ impl BoardDisplay {
         let assets = gameplay_state.get_assets();
         let mut widgets = Vec::new();
 
+        // Nametag
+        widgets.push(Box::new(Button::new(
+            format!("Me: {}", gameplay_state.get_board().player.name),
+            Vector::new(UI_UNIT * 5.0, UI_UNIT * 5.0),
+            BASE_Z_INDEX,
+            &assets,
+            None,
+        ),
+        ) as Box<dyn Widget>);
+        widgets.push(Box::new(Button::new(
+            format!("Foe: {}", gameplay_state.get_opponent().player.name),
+            Vector::new(UI_UNIT * 5.0, UI_UNIT * 10.0),
+            BASE_Z_INDEX,
+            &assets,
+            None,
+        ),
+        ) as Box<dyn Widget>);
+
         // Next turn button
         widgets.push(Box::new(Button::new(
             format!("End turn\ndeck: {}", gameplay_state.get_board().deck.len()),

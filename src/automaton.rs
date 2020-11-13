@@ -16,6 +16,7 @@ pub enum GameEvent {
     CardTargeted(BoardZone, usize, BoardZone, usize),
     CardBought(BoardZone, usize),
     EndTurn, 
+    StartTurn,
     IO(Event), // keyboard, mouse etc.
     Timeout,
     GameEnded,

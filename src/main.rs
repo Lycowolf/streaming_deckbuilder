@@ -4,6 +4,8 @@ mod automaton;
 mod ui;
 mod game_objects;
 mod game_logic;
+mod game_control;
+mod ai;
 mod loading;
 
 use quicksilver::prelude::*;

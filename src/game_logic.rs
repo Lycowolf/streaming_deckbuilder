@@ -8,11 +8,14 @@ use crate::automaton::*;
 use crate::ui::{TakeTurnState, TargetingState};
 use crate::game_objects::*;
 use crate::loading::Assets;
+use crate::game_control::{Player, PlayerControl, GameControlState};
+use crate::ai::AI;
 use std::mem::take;
 use quicksilver::graphics::PixelFormat;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BoardState {
+    pub player: Player,
     pub hand: Box<CardContainer>,
     pub deck: Box<Deck>,
     // FIXME: Use something that have set of keys known beforehand; consider using RON (Rusty Object Notation) instead of JSON
@@ -23,6 +26,7 @@ pub struct BoardState {
     pub buildings: Box<CardContainer>,
     // FIXME: make this a vector, or a type that can be iterated
     pub kaiju_zone: Box<CardContainer>,
+    pub ai: Option<Box<AI>>
 }
 
 impl BoardState {
@@ -173,47 +177,72 @@ impl BoardState {
         }
     }
 
-}
-
-// impl Default for BoardState {
-//     fn default() -> Self {
-//         print!("Default needed");
-//         //Self::load_board("cards.json")
-//     }
-// }
-
-impl GameplayState {
-    pub fn new(mut board: BoardState, assets: Assets) -> Self {
-        board.begin_turn();
-        println!("Created a new board: {:?}", board);
-        Self { board, assets }
-    }
-
-    pub fn new_with_ui(mut board: BoardState, assets: Assets) -> Box<TakeTurnState> {
-        let mut gameplay_state = Box::new(Self::new(board, assets));
-        println!("Wrapping this gameplay state: {:?}", gameplay_state);
-        gameplay_state.take_turn()
-    }
-
-    pub fn get_board(&self) -> &BoardState {
-        &self.board
-    }
-
-    pub fn get_assets(&self) -> &Assets {
-        &self.assets
-    }
-
-    // Performs all operations needed before switching to TakeTurnState
-    fn take_turn(&mut self) -> Box<TakeTurnState> {
-        self.board.update_availability();
-        TakeTurnState::new(Box::new(take(self)))
+    pub fn is_defeated(&self) -> bool {
+        self.buildings.empty()
     }
 }
 
 #[derive(Debug, Default)]
 pub struct GameplayState {
-    board: BoardState,
-    assets: Assets,
+    controller: Box<GameControlState>,
+    // board: BoardState,
+    // opponent_board: BoardState
+    board_idx: usize,
+    opo_idx: usize
+}
+
+impl GameplayState {
+    pub fn new(controller: Box<GameControlState>, board_idx: usize, opo_idx: usize) -> Box<Self> { //board: BoardState, opponent_board: BoardState) -> Box<Self> {
+        //Box::new(Self{controller, board, opponent_board })
+        Box::new(Self{controller, board_idx, opo_idx })
+    }
+
+    pub fn new_with_ui(controller: Box<GameControlState>, board_idx: usize, opo_idx: usize) -> Box<dyn AutomatonState> {
+       let mut gameplay_state = Box::new(Self::new(controller, board_idx, opo_idx));
+       println!("Wrapping this gameplay state: {:?}", gameplay_state);
+       gameplay_state.event(GameEvent::StartTurn)
+    }
+
+    pub fn get_board(&self) -> &BoardState {
+        //&self.board
+        &self.controller.get_board(self.board_idx)
+    }
+
+    pub fn get_board_mut(&mut self) -> &mut BoardState {
+        //&self.board
+        self.controller.get_board_mut(self.board_idx)
+    }
+
+    pub fn get_opponent(&self) -> &BoardState {
+        //&self.opponent_board
+        &self.controller.get_board(self.opo_idx)
+    }
+
+    pub fn get_opponent_mut(&mut self) -> &mut BoardState {
+        //&self.opponent_board
+        self.controller.get_board_mut(self.opo_idx)
+    }
+
+    pub fn get_assets(&self) -> &Assets {
+        self.controller.get_assets()
+    }
+
+    // Performs all operations needed before switching control
+    // either to player by going to TakeTurnState,
+    // or AI by calling self.event with event obtained from AI object
+    fn take_turn(&mut self) -> Box<dyn AutomatonState> {
+        self.get_board_mut().update_availability();
+
+        match self.get_board().player.control {
+            PlayerControl::Human => TakeTurnState::new(Box::new(take(self))),
+            PlayerControl::AI => {
+                let board = self.get_board();
+                let ai = board.ai.as_ref().expect("AI for AI player not loaded");
+                let intent = ai.select_card(board);
+                self.event(intent)
+            } 
+        }
+    }
 }
 
 impl AutomatonState for GameplayState {
@@ -221,11 +250,15 @@ impl AutomatonState for GameplayState {
         println!("GameplayState received event: {:?}", event);
 
         match event {
+            GameEvent::StartTurn => {
+                self.get_board_mut().begin_turn();
+                self.take_turn()
+            }
             GameEvent::CardPicked(card_idx) => {
 
                 // interception
-                let tags = self.board.hand.cards[card_idx].tags.clone();
-                let interference = self.board.kaiju_zone.cards.iter_mut()
+                let tags = self.get_board().hand.cards[card_idx].tags.clone();
+                let interference = self.get_board_mut().kaiju_zone.cards.iter_mut()
                     .filter_map(|k| if !k.stunned &&
                                        k.intercepts_left > 0 &&
                                        tags.contains(&k.intercept?.tag) {
@@ -237,46 +270,59 @@ impl AutomatonState for GameplayState {
                 
                 if let Some(mut annoyance) = interference {
                     annoyance.intercepts_left -= 1;
-                    self.board.hand.remove(card_idx);
+                    self.get_board_mut().hand.remove(card_idx);
 
                     return self.take_turn()
                 }
 
                 // play the card
-                let card_target = self.board.hand.cards[card_idx].target_zone;
+                let card_target = self.get_board().hand.cards[card_idx].target_zone;
                 match card_target {
                     BoardZone::None => {
-                        self.board.play_card(card_idx);
+                        self.get_board_mut().play_card(card_idx);
                         self.take_turn()
                     },
                     _ => {
-                        self.board.update_availability();
-                        TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target)
+                        self.get_board_mut().update_availability();
+                        match self.get_board().player.control {
+                            PlayerControl::Human => TargetingState::new(Box::new(take(self)), BoardZone::Hand, card_idx, card_target),
+                            PlayerControl::AI => {
+                                let board = self.get_board_mut();
+                                let ai = board.ai.as_ref().expect("AI for AI player not loaded");
+                                let intent = ai.target_card(board, card_idx, card_target);
+                                self.event(intent)
+                            } 
+                        }
+                        
                     }
                 }
             }, 
             GameEvent::CardTargeted(card_zone, card_idx, target_zone, target_idx) => {
                 if target_zone != BoardZone::None {
-                    self.board.play_card_on_target(card_idx, target_zone, target_idx);
+                    self.get_board_mut().play_card_on_target(card_idx, target_zone, target_idx);
                 };
                 self.take_turn()
             },
-
             GameEvent::CardBought(zone, card_idx) => {
 
                 // TODO extract as method to GameBoard? I may want to use it in computing is_available, too
                 let can_afford = {
-                    let store = self.board.store_by_zone(zone);
+                    let store = self.get_board_mut().store_by_zone(zone);
                     let card_cost = store.menu.cards[card_idx].cost.clone();
-                    self.board.globals.can_afford(&card_cost)
+                    self.get_board().globals.can_afford(&card_cost)
                 };
 
                 if can_afford {
-                    let store = self.board.store_by_zone(zone);
+                    let store = self.get_board_mut().store_by_zone(zone);
                     let card = store.buy_card(card_idx);
 
-                    self.board.globals.pay(&card.cost);
-                    self.board.deck.add(card.clone());
+                    self.get_board_mut().globals.pay(&card.cost);
+
+                    if card.give_to_enemy {
+                        self.get_opponent_mut().deck.add(card.clone());
+                    } else {
+                        self.get_board_mut().deck.add(card.clone());
+                    }
                 } else {
                     println!("Cannot buy, relevant global value too low (i.e. you do not have enough cash)")
                 }
@@ -284,9 +330,8 @@ impl AutomatonState for GameplayState {
                 self.take_turn()
             }
             GameEvent::EndTurn => {
-                self.board.end_turn();
-                self.board.begin_turn();
-                self.take_turn()
+                self.get_board_mut().end_turn();
+                self.controller.event(GameEvent::EndTurn)
             }
             GameEvent::GameEnded => Box::new(GameEndedState {}),
             _ => {

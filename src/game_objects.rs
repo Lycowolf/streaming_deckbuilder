@@ -135,11 +135,10 @@ pub struct Card {
     pub on_strike: Vec<Effect>,
     //pub on_defend: Vec<Effect>,
     pub cost: Cost,
-    pub available: bool,    
-
     pub target_zone: BoardZone,
     pub target_effect: TargetEffect,
-
+    pub give_to_enemy: bool,
+    
     #[serde(default = "no_image")]
     pub image: String,
 
@@ -154,6 +153,8 @@ pub struct Card {
     pub stunned: bool,
     #[serde(skip)]
     pub intercepts_left: u8,
+    #[serde(skip)]
+    pub available: bool,    
 }
 
 fn no_image() -> String {

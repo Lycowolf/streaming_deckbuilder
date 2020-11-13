@@ -9,6 +9,7 @@ use std::mem::take;
 
 mod widgets;
 mod board_display;
+pub mod game_end_state;
 
 use widgets::*;
 use crate::game_objects::{GameData, Globals, Card, Effect, BoardZone};
