@@ -84,13 +84,6 @@ impl BoardState {
     pub fn begin_turn(&mut self) {
         println!("Starting turn {}", self.turn);
 
-        //for zone in [self.hand, self.kaiju_zone, self.buildings, self.store_fixed, self.store_trade]:
-        // 
-        for mut card in self.kaiju_zone.cards.clone() {
-            card.reset()
-        }
-
-
         // process on_begin
         for (_, card, effect) in self.buildings.all_effects(|c| &c.on_turn_start) {
             self.evaluate_effect(&effect, card)
@@ -102,6 +95,12 @@ impl BoardState {
                 break;
             }
         }
+
+        //for zone in [self.hand, self.kaiju_zone, self.buildings, self.store_fixed, self.store_trade]:
+        // 
+        for card in self.kaiju_zone.cards.iter_mut() {
+            card.reset()
+    }
     }
 
     pub fn end_turn(&mut self) {
